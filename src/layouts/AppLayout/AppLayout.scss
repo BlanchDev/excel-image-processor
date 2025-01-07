@@ -1,0 +1,16 @@
+.app-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+
+  .app-layout-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: calc(100% - 180px);
+    height: 100%;
+    padding: 20px;
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "name": "excel-image-processor",
+  "appId": "com.excelimageprocessor.desktop",
+  "productName": "Excel Image Processor",
+  "description": "Excel Image Processor",
+  "author": "blanch.dev",
+  "version": "1.0.0",
+  "license": "Custom License - No Commercial Use",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:react": "vite --host",
+    "build:react": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "dev:all": "concurrently \"bun dev:react\" \"bun wait-port 5173 && bun run dev:electron\"",
+    "build:all": "rm -rf dist-electron && bun run build:react && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "canvas": "^3.0.1",
+    "concurrently": "^9.1.2",
+    "electron-store": "^10.0.0",
+    "react": "^18.3.1",
+    "react-colorful": "^5.6.1",
+    "react-dom": "^18.3.1",
+    "react-json-view-lite": "^2.1.0",
+    "react-router-dom": "^7.1.1",
+    "wait-port": "^1.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^7.0.3",
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "sass": "^1.83.1",
+    "vite": "^6.0.5"
+  },
+  "build": {
+    "appId": "com.excelimageprocessor.desktop",
+    "productName": "Excel Image Processor",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "electron/assets/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Excel Image Processor",
+      "installerIcon": "electron/assets/logo.ico",
+      "uninstallerIcon": "electron/assets/logo.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "electron/assets/logo.png",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "hardenedRuntime": true
+    },
+    "dmg": {
+      "icon": "electron/assets/logo.png",
+      "iconSize": 100,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 400
+      }
+    }
+  },
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "canvas",
+    "electron",
+    "esbuild"
+  ]
+}

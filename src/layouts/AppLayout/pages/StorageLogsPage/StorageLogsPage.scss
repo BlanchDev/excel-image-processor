@@ -1,0 +1,70 @@
+.storage-logs-page {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  flex: 1;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .config-section {
+    background: #262522;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #d900ff;
+    }
+
+    .error {
+      color: #ff4444;
+      padding: 10px;
+      background: rgba(255, 68, 68, 0.1);
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+
+    .info {
+      color: #e5ff00;
+      padding: 10px;
+      background: rgba(229, 255, 0, 0.1);
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+
+    .json-viewer {
+      background: #1a1918;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 1.1em;
+
+      :global {
+        .react-json-view {
+          background: transparent !important;
+        }
+      }
+    }
+  }
+
+  .image-config {
+    background: #1a1918;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: #d900ff;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
