@@ -16,8 +16,9 @@
     "preview": "vite preview",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev:all": "concurrently \"bun dev:react\" \"bun wait-port 5173 && bun run dev:electron\"",
-    "build:all": "rm -rf dist-electron && bun run build:react && electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "build:all": "rm -rf dist-electron && bun run build:react && bun run rebuild && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild -f -w canvas"
   },
   "dependencies": {
     "canvas": "^3.0.1",
@@ -74,19 +75,17 @@
             "x64",
             "arm64"
           ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
         }
       ],
       "icon": "electron/assets/logo.png",
       "category": "public.app-category.productivity",
       "darkModeSupport": true,
-      "hardenedRuntime": true
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "LSMinimumSystemVersion": "10.15.0",
+        "NSHighResolutionCapable": true,
+        "NSRequiresAquaSystemAppearance": false
+      }
     },
     "dmg": {
       "icon": "electron/assets/logo.png",
@@ -106,8 +105,19 @@
       "window": {
         "width": 540,
         "height": 400
+      },
+      "backgroundColor": "#ffffff",
+      "title": "${productName}"
+    },
+    "extraResources": [
+      {
+        "from": "electron/assets/",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
       }
-    }
+    ]
   },
   "trustedDependencies": [
     "@parcel/watcher",

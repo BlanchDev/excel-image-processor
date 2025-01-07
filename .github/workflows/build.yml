@@ -1,4 +1,4 @@
-name: Build Electron App
+name: Build Apps
 
 on:
   push:
@@ -8,14 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-
-    runs-on: ${{ matrix.os }}
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-windows:
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -24,30 +18,98 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.11.0"
+          cache: "npm"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: bun install
 
-      - name: Build Electron
+      - name: Build App
         run: bun run build:all
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows Artifacts
-        if: matrix.os == 'windows-latest'
+      - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: dist-electron/*.exe
 
-      - name: Upload macOS Artifacts
-        if: matrix.os == 'macos-latest'
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+            node-version: "22.11.0"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Xcode Command Line Tools
+        run: |
+          xcode-select --install || true
+          xcode-select --print-path
+
+      - name: Install Homebrew Dependencies
+        run: |
+          brew update
+          brew upgrade
+          brew install pkg-config cairo pango libpng jpeg giflib librsvg
+          brew install node-gyp
+
+      - name: Setup System
+        run: |
+          echo "Setting up system..."
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          sudo xcodebuild -license accept
+          echo "Cleaning npm cache..."
+          npm cache clean --force
+          echo "Setting npm config..."
+          npm config set python python3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: |
+          bun install
+          npm rebuild
+
+      - name: Rebuild native modules
+        run: |
+          bun run rebuild
+          node-gyp rebuild
+        env:
+          ELECTRON_ENABLE_LOGGING: true
+
+      - name: Build App
+        run: bun run build:all --verbose
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_ENABLE_LOGGING: true
+          DEBUG: electron-builder,electron-rebuild
+
+      - name: Upload Mac Intel Build
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build
-          path: |
-            dist-electron/*.dmg
-            dist-electron/*.zip
+          name: mac-x64-build
+          path: dist-electron/*-x64.dmg
+
+      - name: Upload Mac ARM Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64-build
+          path: dist-electron/*-arm64.dmg
