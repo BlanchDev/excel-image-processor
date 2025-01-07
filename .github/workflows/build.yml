@@ -56,16 +56,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
