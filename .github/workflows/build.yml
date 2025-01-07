@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18.x"
+          node-version: "22.11.0"
           cache: "npm"
 
       - name: Setup Bun
@@ -51,6 +51,21 @@ jobs:
           node-version: "22.11.0"
           cache: "npm"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -77,11 +92,6 @@ jobs:
           npm cache clean --force
           echo "Setting npm config..."
           npm config set python python3
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
 
       - name: Install Dependencies
         run: |
