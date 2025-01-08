@@ -419,13 +419,13 @@ export const registerFileHandlers = (ipcMain, app) => {
             outputDir,
             `${path.basename(excelFileName, ".xlsx")}-${
               data.indexOf(row) + 1
-            }-${fileName}`,
+            }-${path.basename(fileName, path.extname(fileName))}.png`,
           );
 
           console.log("Saving to:", outputPath);
 
           // Save the processed image
-          const buffer = canvas.toBuffer("image/jpeg", { quality: 1 });
+          const buffer = canvas.toBuffer("image/png");
           await fs.writeFile(outputPath, buffer);
           results.push(outputPath);
         } catch (error) {
