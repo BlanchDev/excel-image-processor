@@ -1,0 +1,41 @@
+.home-page {
+
+  .settings-section {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #262522;
+    border-radius: 8px;
+
+    h3 {
+      margin-bottom: 15px;
+      color: #66da46;
+    }
+
+    .scale-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      label {
+        min-width: 120px;
+      }
+
+      select {
+        padding: 8px;
+        border-radius: 4px;
+        background-color: #181715;
+        border: 1px solid #45433e;
+        color: #fff;
+        cursor: pointer;
+
+        &:hover {
+          border-color: #66da46;
+        }
+
+        option {
+          background-color: #181715;
+        }
+      }
+    }
+  }
+}

@@ -103,4 +103,8 @@ contextBridge.exposeInMainWorld("Electron", {
 
   setActiveExcel: (filePath) =>
     ipcRenderer.invoke("set-active-excel", filePath),
+
+  getStore: (key) => ipcRenderer.invoke("get-store", key),
+
+  setStore: (key, value) => ipcRenderer.invoke("set-store", key, value),
 });

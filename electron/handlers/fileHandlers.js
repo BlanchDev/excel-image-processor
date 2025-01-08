@@ -343,8 +343,7 @@ export const registerFileHandlers = (ipcMain, app) => {
           const imageBuffer = await fs.readFile(imagePath);
           const image = await loadImage(imageBuffer);
 
-          // Create high resolution canvas (4x scale)
-          const scale = 4;
+          const scale = store.get("imageScale") || 1;
           const canvas = createCanvas(
             image.width * scale,
             image.height * scale,

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createMainWindow } from "./window.js";
 import { registerFileHandlers } from "./handlers/fileHandlers.js";
+import { registerStoreHandlers } from "./store.js";
 import process from "process";
 
 app.commandLine.appendSwitch("disable-http-cache");
@@ -25,6 +26,7 @@ let mainWindow = null;
 app.whenReady().then(() => {
   mainWindow = createMainWindow();
   registerFileHandlers(ipcMain, app);
+  registerStoreHandlers(ipcMain);
 });
 
 app.on("window-all-closed", () => {

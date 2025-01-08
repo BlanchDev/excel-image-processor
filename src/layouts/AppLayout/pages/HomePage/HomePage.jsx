@@ -8,6 +8,7 @@ import {
 function HomePage() {
   const [processing, setProcessing] = useState(false);
   const [lastMessage, setLastMessage] = useState("");
+  const [imageScale, setImageScale] = useState(1);
 
   const { status, setStatus } = useStatus();
   const { paths, currentExcel } = useFilePaths();
@@ -23,6 +24,12 @@ function HomePage() {
       setLastMessage(status.message);
     }
   }, [status]);
+
+  useEffect(() => {
+    window.Electron.getStore("imageScale").then((scale) => {
+      setImageScale(scale || 1);
+    });
+  }, []);
 
   const handleFileSelection = async () => {
     if (!window.Electron) {
@@ -65,6 +72,11 @@ function HomePage() {
     }
   };
 
+  const handleScaleChange = async (value) => {
+    setImageScale(value);
+    await window.Electron.setStore("imageScale", value);
+  };
+
   return (
     <div className='app-layout-page column aic gap50'>
       <div className='row aic jcsb gap10'>
@@ -83,6 +95,21 @@ function HomePage() {
             <p>{lastMessage}</p>
           </div>
         )}
+      </div>
+      <div className='settings-section'>
+        <h3>Image Quality Settings</h3>
+        <div className='scale-selector'>
+          <label>Image Resolution:</label>
+          <select
+            value={imageScale}
+            onChange={(e) => handleScaleChange(Number(e.target.value))}
+          >
+            <option value={1}>1K Resolution</option>
+            <option value={2}>2K Resolution</option>
+            <option value={3}>3K Resolution</option>
+            <option value={4}>4K Resolution</option>
+          </select>
+        </div>
       </div>
     </div>
   );
