@@ -343,9 +343,16 @@ export const registerFileHandlers = (ipcMain, app) => {
           const imageBuffer = await fs.readFile(imagePath);
           const image = await loadImage(imageBuffer);
 
-          // Create canvas with image dimensions
-          const canvas = createCanvas(image.width, image.height);
+          // Create high resolution canvas (4x scale)
+          const scale = 4;
+          const canvas = createCanvas(
+            image.width * scale,
+            image.height * scale,
+          );
           const ctx = canvas.getContext("2d");
+
+          // Scale everything up
+          ctx.scale(scale, scale);
 
           // Draw image on canvas
           ctx.drawImage(image, 0, 0);
@@ -382,37 +389,32 @@ export const registerFileHandlers = (ipcMain, app) => {
             // Set font and text properties
             console.log("Using font family:", fontInfo.family);
 
-            // Text alignment ayarları
-            ctx.textBaseline = "top";
-            ctx.textAlign = "left";
-
             // Font ayarlarını yap
             const fontSize = columnPosition.fontSize;
-            ctx.font = `${fontSize}pt ${fontInfo.family}`;
+            ctx.font = `${fontSize}px ${fontInfo.family}`;
             console.log("Font string:", ctx.font);
 
             // Letter spacing için her karakteri ayrı çiz
             let currentX = columnPosition.x;
-            const spacing = 1.5;
-            const padding = 2;
+            const spacing = 0.5;
 
             // Önce arkaplanı çiz
             const totalWidth =
               ctx.measureText(text).width + (text.length - 1) * spacing;
-            const textHeight = fontSize;
+            const textHeight = columnPosition.fontSize;
 
             ctx.fillStyle = `rgba(${columnPosition.backgroundColor.r}, ${columnPosition.backgroundColor.g}, ${columnPosition.backgroundColor.b}, ${columnPosition.backgroundColor.a})`;
             ctx.fillRect(
               columnPosition.x,
               columnPosition.y,
-              totalWidth + padding * 2,
+              totalWidth,
               textHeight,
             );
 
             // Sonra her karakteri çiz
             ctx.fillStyle = `rgba(${columnPosition.color.r}, ${columnPosition.color.g}, ${columnPosition.color.b}, ${columnPosition.color.a})`;
+            ctx.textBaseline = "top";
 
-            currentX += padding;
             for (let char of text) {
               ctx.fillText(char, currentX, columnPosition.y);
               currentX += ctx.measureText(char).width + spacing;
