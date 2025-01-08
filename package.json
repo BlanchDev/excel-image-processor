@@ -16,9 +16,8 @@
     "preview": "vite preview",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev:all": "concurrently \"bun dev:react\" \"bun wait-port 5173 && bun run dev:electron\"",
-    "build:all": "rm -rf dist-electron && bun run build:react && bun run rebuild && electron-builder",
-    "postinstall": "electron-builder install-app-deps",
-    "rebuild": "electron-rebuild -f -w canvas"
+    "build:all": "rm -rf dist-electron && bun run build:react && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "canvas": "^3.0.1",
