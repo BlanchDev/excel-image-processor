@@ -67,9 +67,7 @@ jobs:
       - name: Install Homebrew Dependencies
         run: |
           brew update
-          brew upgrade
           brew install pkg-config cairo pango libpng jpeg giflib librsvg
-          brew install node-gyp
 
       - name: Setup System
         run: |
@@ -80,6 +78,17 @@ jobs:
           npm cache clean --force
           echo "Setting npm config..."
           npm config set python python3
+          echo "Setting up jpeg environment..."
+          echo 'export PATH="/opt/homebrew/opt/jpeg/bin:$PATH"' >> $HOME/.bash_profile
+          echo 'export LDFLAGS="-L/opt/homebrew/opt/jpeg/lib"' >> $HOME/.bash_profile
+          echo 'export CPPFLAGS="-I/opt/homebrew/opt/jpeg/include"' >> $HOME/.bash_profile
+          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/jpeg/lib/pkgconfig"' >> $HOME/.bash_profile
+          source $HOME/.bash_profile
+
+      - name: Install Build Tools
+        run: |
+          npm install -g node-gyp
+          node-gyp install
 
       - name: Install Dependencies
         run: |
@@ -92,6 +101,9 @@ jobs:
           node-gyp rebuild
         env:
           ELECTRON_ENABLE_LOGGING: true
+          LDFLAGS: "-L/opt/homebrew/opt/jpeg/lib"
+          CPPFLAGS: "-I/opt/homebrew/opt/jpeg/include"
+          PKG_CONFIG_PATH: "/opt/homebrew/opt/jpeg/lib/pkgconfig"
 
       - name: Build App
         run: bun run build:all --verbose
@@ -99,6 +111,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_ENABLE_LOGGING: true
           DEBUG: electron-builder,electron-rebuild
+          LDFLAGS: "-L/opt/homebrew/opt/jpeg/lib"
+          CPPFLAGS: "-I/opt/homebrew/opt/jpeg/include"
+          PKG_CONFIG_PATH: "/opt/homebrew/opt/jpeg/lib/pkgconfig"
 
       - name: Upload Mac Intel Build
         uses: actions/upload-artifact@v4
