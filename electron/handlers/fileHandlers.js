@@ -382,6 +382,10 @@ export const registerFileHandlers = (ipcMain, app) => {
             // Set font and text properties
             console.log("Using font family:", fontInfo.family);
 
+            // Text alignment ayarları
+            ctx.textBaseline = "top";
+            ctx.textAlign = "left";
+
             // Font ayarlarını yap
             const fontSize = columnPosition.fontSize;
             ctx.font = `${fontSize}pt ${fontInfo.family}`;
@@ -389,25 +393,26 @@ export const registerFileHandlers = (ipcMain, app) => {
 
             // Letter spacing için her karakteri ayrı çiz
             let currentX = columnPosition.x;
-            const spacing = 1.5; // 2 piksel boşluk
+            const spacing = 1.5;
+            const padding = 2;
 
             // Önce arkaplanı çiz
             const totalWidth =
               ctx.measureText(text).width + (text.length - 1) * spacing;
-            const textHeight = columnPosition.fontSize;
+            const textHeight = fontSize;
 
             ctx.fillStyle = `rgba(${columnPosition.backgroundColor.r}, ${columnPosition.backgroundColor.g}, ${columnPosition.backgroundColor.b}, ${columnPosition.backgroundColor.a})`;
             ctx.fillRect(
               columnPosition.x,
               columnPosition.y,
-              totalWidth,
+              totalWidth + padding * 2,
               textHeight,
             );
 
             // Sonra her karakteri çiz
             ctx.fillStyle = `rgba(${columnPosition.color.r}, ${columnPosition.color.g}, ${columnPosition.color.b}, ${columnPosition.color.a})`;
-            ctx.textBaseline = "top";
 
+            currentX += padding;
             for (let char of text) {
               ctx.fillText(char, currentX, columnPosition.y);
               currentX += ctx.measureText(char).width + spacing;
