@@ -42,6 +42,7 @@ jobs:
     runs-on: macos-latest
     env:
       npm_config_python: "/usr/bin/python3"
+      DEBUG: "electron-builder"
 
     steps:
       - uses: actions/checkout@v4
@@ -97,11 +98,11 @@ jobs:
           cd ../..
 
       - name: Build App
-        run: bun run build:all --verbose
+        run: bun run build:all
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_ENABLE_LOGGING: true
-          DEBUG: electron-builder,electron-rebuild
+          DEBUG: electron-builder
           LDFLAGS: "-L/opt/homebrew/opt/jpeg/lib"
           CPPFLAGS: "-I/opt/homebrew/opt/jpeg/include"
           PKG_CONFIG_PATH: "/opt/homebrew/opt/jpeg/lib/pkgconfig"
