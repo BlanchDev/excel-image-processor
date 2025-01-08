@@ -384,7 +384,7 @@ export const registerFileHandlers = (ipcMain, app) => {
 
             // Font ayarlarını yap
             const fontSize = columnPosition.fontSize;
-            ctx.font = `${fontSize}px ${fontInfo.family}`;
+            ctx.font = `${fontSize}pt ${fontInfo.family}`;
             console.log("Font string:", ctx.font);
 
             // Letter spacing için her karakteri ayrı çiz
