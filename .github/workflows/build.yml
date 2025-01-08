@@ -40,6 +40,8 @@ jobs:
 
   build-mac:
     runs-on: macos-latest
+    env:
+      npm_config_python: "/usr/bin/python3"
 
     steps:
       - uses: actions/checkout@v4
@@ -76,14 +78,11 @@ jobs:
           sudo xcodebuild -license accept
           echo "Cleaning npm cache..."
           npm cache clean --force
-          echo "Setting npm config..."
-          npm config set python python3
           echo "Setting up jpeg environment..."
-          echo 'export PATH="/opt/homebrew/opt/jpeg/bin:$PATH"' >> $HOME/.bash_profile
-          echo 'export LDFLAGS="-L/opt/homebrew/opt/jpeg/lib"' >> $HOME/.bash_profile
-          echo 'export CPPFLAGS="-I/opt/homebrew/opt/jpeg/include"' >> $HOME/.bash_profile
-          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/jpeg/lib/pkgconfig"' >> $HOME/.bash_profile
-          source $HOME/.bash_profile
+          export PATH="/opt/homebrew/opt/jpeg/bin:$PATH"
+          export LDFLAGS="-L/opt/homebrew/opt/jpeg/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/jpeg/include"
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/jpeg/lib/pkgconfig"
 
       - name: Install Build Tools
         run: |
