@@ -3,47 +3,24 @@ import path from "path";
 import fs from "fs/promises";
 import * as XLSX from "xlsx";
 import store from "../store.js";
-import { createCanvas, loadImage, registerFont } from "canvas";
+import { Buffer } from "buffer";
 
 // Get saved paths from store
 let savedPaths = store.get("paths");
 
-// Register all fonts at startup
-async function registerAllFonts() {
-  if (!savedPaths.fontPath) return;
+// Font adını dosyadan al
+const getFontFamily = (fontFileName) => {
+  // Dosya uzantısını kaldır (.ttf, .otf, .woff, .woff2)
+  const baseName = fontFileName
+    .replace(/\.(ttf|otf|woff|woff2)$/i, "")
+    .replace(/[\s-]+/g, "") // Boşluk ve tire karakterlerini kaldır
+    .replace(/([A-Z])/g, "$1"); // Büyük harfleri koru
 
-  try {
-    const files = await fs.readdir(savedPaths.fontPath);
-    const fontFiles = files.filter((file) =>
-      /\.(ttf|otf|woff|woff2)$/i.test(file),
-    );
-
-    for (const fontFile of fontFiles) {
-      try {
-        const fontPath = path.join(savedPaths.fontPath, fontFile);
-        const fontInfo = getFontFamily(fontFile);
-
-        console.log(
-          "Registering font:",
-          fontInfo.family,
-          "from file:",
-          fontFile,
-        );
-
-        // Fontu kaydet
-        registerFont(fontPath, {
-          family: fontInfo.family,
-          style: "normal",
-          weight: "normal",
-        });
-      } catch (error) {
-        console.error(`Error registering font ${fontFile}:`, error);
-      }
-    }
-  } catch (error) {
-    console.error("Error reading font directory:", error);
-  }
-}
+  return {
+    family: baseName,
+    file: fontFileName,
+  };
+};
 
 // Get Excel columns
 async function getExcelColumns() {
@@ -66,48 +43,7 @@ async function getExcelColumns() {
   }
 }
 
-// Find the specified image
-async function getImage(basePath, imageName) {
-  try {
-    const imagePath = path.join(basePath, imageName);
-    console.log("Checking image at:", imagePath);
-
-    // Check if file exists
-    try {
-      await fs.access(imagePath);
-      console.log("Image exists at:", imagePath);
-    } catch {
-      console.error("Image not found at:", imagePath);
-      throw new Error(`Image "${imageName}" not found`);
-    }
-
-    return {
-      path: imagePath,
-      fileName: imageName,
-    };
-  } catch (error) {
-    throw new Error(`Error reading image: ${error.message}`);
-  }
-}
-
-// Font adını dosyadan al
-const getFontFamily = (fontFileName) => {
-  // Dosya uzantısını kaldır (.ttf, .otf, .woff, .woff2)
-  const baseName = fontFileName
-    .replace(/\.(ttf|otf|woff|woff2)$/i, "")
-    .replace(/[\s-]+/g, "") // Boşluk ve tire karakterlerini kaldır
-    .replace(/([A-Z])/g, "$1"); // Büyük harfleri koru
-
-  return {
-    family: baseName,
-    file: fontFileName,
-  };
-};
-
 export const registerFileHandlers = (ipcMain, app) => {
-  // Register all fonts when handlers are initialized
-  registerAllFonts();
-
   // Get Excel columns
   ipcMain.handle("get-excel-columns", async () => {
     return await getExcelColumns();
@@ -234,8 +170,6 @@ export const registerFileHandlers = (ipcMain, app) => {
     if (filePaths && filePaths.length > 0) {
       savedPaths.fontPath = filePaths[0];
       store.set("paths", savedPaths);
-      // Re-register fonts when new folder is selected
-      await registerAllFonts();
       return { path: filePaths[0] };
     }
     return { path: null };
@@ -263,192 +197,6 @@ export const registerFileHandlers = (ipcMain, app) => {
     } catch (error) {
       console.error("Could not get font list:", error);
       return [];
-    }
-  });
-
-  // Process Excel and image
-  ipcMain.handle("process-excel-and-image", async () => {
-    try {
-      const outputDir = savedPaths.outputDir;
-      const activeExcel = store.get("activeExcelFile");
-
-      if (!outputDir) {
-        throw new Error("Output folder not selected");
-      }
-
-      if (!activeExcel) {
-        throw new Error("Excel file not selected");
-      }
-
-      if (!savedPaths.imagePath) {
-        throw new Error("Image folder not selected");
-      }
-
-      // Get current Excel filename
-      const excelFileName = path.basename(activeExcel);
-
-      // Read Excel file
-      const excelBuffer = await fs.readFile(activeExcel);
-      const workbook = XLSX.read(excelBuffer);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
-
-      // Create output directory
-      await fs.mkdir(outputDir, { recursive: true });
-
-      const results = [];
-      const errors = [];
-
-      // Get saved positions for current Excel
-      const allPositions = store.get("imagePositions") || {};
-      const positions = allPositions[excelFileName] || {};
-
-      // Process each row
-      for (const row of data) {
-        try {
-          console.log("Processing data:", row);
-
-          // Get image name from img_path column
-          const imageName = row["img_path"] || row.img_path;
-          if (!imageName) {
-            throw new Error("Image name not found in img_path column");
-          }
-
-          // Görüntü için pozisyonları al
-          const imagePositions = positions[imageName] || {};
-
-          // Aktif sütun var mı kontrol et
-          const hasActiveColumns = Object.values(imagePositions).some(
-            (col) => col.isEnabled,
-          );
-
-          // Eğer hiç aktif sütun yoksa bu görüntüyü atla
-          if (!hasActiveColumns) {
-            console.log(`Skipping image ${imageName} - No active columns`);
-            continue;
-          }
-
-          // Find and read image
-          const { path: imagePath, fileName } = await getImage(
-            savedPaths.imagePath,
-            imageName,
-          );
-
-          console.log("Image path:", imagePath);
-          console.log("Font path:", savedPaths.fontPath);
-          console.log("Output path:", outputDir);
-
-          // Load image
-          const imageBuffer = await fs.readFile(imagePath);
-          const image = await loadImage(imageBuffer);
-
-          const scale = store.get("imageScale") || 1;
-          const canvas = createCanvas(
-            image.width * scale,
-            image.height * scale,
-          );
-          const ctx = canvas.getContext("2d");
-
-          // Scale everything up
-          ctx.scale(scale, scale);
-
-          // Draw image on canvas
-          ctx.drawImage(image, 0, 0);
-
-          console.log("Using positions:", positions);
-          console.log("Using image positions:", imagePositions);
-
-          // Add text for each enabled column
-          for (const [column, value] of Object.entries(row)) {
-            if (column === "img_path") continue;
-
-            const columnPosition = imagePositions[column];
-            if (!columnPosition?.isEnabled) continue;
-
-            let text = String(value);
-
-            // Use font if specified
-            let fontInfo = { family: "Arial" };
-            if (
-              savedPaths.fontPath &&
-              columnPosition.fontFamily &&
-              columnPosition.fontFamily !== "not-set"
-            ) {
-              try {
-                const fontData = getFontFamily(columnPosition.fontFamily);
-                fontInfo.family = fontData.family;
-                console.log("Using font:", fontData.family);
-              } catch (error) {
-                console.error("Font loading error:", error);
-                text = "Font Error: " + text;
-              }
-            }
-
-            // Set font and text properties
-            console.log("Using font family:", fontInfo.family);
-
-            // Font ayarlarını yap
-            const fontSize = columnPosition.fontSize;
-            ctx.font = `${fontSize}px ${fontInfo.family}`;
-            console.log("Font string:", ctx.font);
-
-            // Letter spacing için her karakteri ayrı çiz
-            let currentX = columnPosition.x;
-            const spacing = 0.5;
-
-            // Önce arkaplanı çiz
-            const totalWidth =
-              ctx.measureText(text).width + (text.length - 1) * spacing;
-            const textHeight = columnPosition.fontSize;
-
-            ctx.fillStyle = `rgba(${columnPosition.backgroundColor.r}, ${columnPosition.backgroundColor.g}, ${columnPosition.backgroundColor.b}, ${columnPosition.backgroundColor.a})`;
-            ctx.fillRect(
-              columnPosition.x,
-              columnPosition.y,
-              totalWidth,
-              textHeight,
-            );
-
-            // Sonra her karakteri çiz
-            ctx.fillStyle = `rgba(${columnPosition.color.r}, ${columnPosition.color.g}, ${columnPosition.color.b}, ${columnPosition.color.a})`;
-            ctx.textBaseline = "top";
-
-            for (let char of text) {
-              ctx.fillText(char, currentX, columnPosition.y);
-              currentX += ctx.measureText(char).width + spacing;
-            }
-          }
-
-          // Create output file name with current Excel file name
-          const outputPath = path.join(
-            outputDir,
-            `${path.basename(excelFileName, ".xlsx")}-${
-              data.indexOf(row) + 1
-            }-${path.basename(fileName, path.extname(fileName))}.png`,
-          );
-
-          console.log("Saving to:", outputPath);
-
-          // Save the processed image
-          const buffer = canvas.toBuffer("image/png");
-          await fs.writeFile(outputPath, buffer);
-          results.push(outputPath);
-        } catch (error) {
-          console.error("Error processing row:", error);
-          errors.push(`Row ${data.indexOf(row) + 1}: ${error.message}`);
-        }
-      }
-
-      return {
-        success: true,
-        results,
-        errors,
-        saveDir: outputDir,
-      };
-    } catch (error) {
-      console.error("Processing error:", error);
-      return { success: false, error: error.message };
     }
   });
 
@@ -522,5 +270,157 @@ export const registerFileHandlers = (ipcMain, app) => {
   ipcMain.handle("set-active-excel", (event, filePath) => {
     store.set("activeExcelFile", filePath);
     return true;
+  });
+
+  // Get image preview
+  ipcMain.handle("get-image-preview", async (event, imageName) => {
+    try {
+      if (!savedPaths.imagePath || !imageName) return null;
+
+      const imagePath = path.join(savedPaths.imagePath, imageName);
+      const imageBuffer = await fs.readFile(imagePath);
+
+      return `data:image/png;base64,${imageBuffer.toString("base64")}`;
+    } catch (error) {
+      console.error("Error getting image preview:", error);
+      return null;
+    }
+  });
+
+  // Get font family
+  ipcMain.handle("get-font-family", async (event, fontFileName) => {
+    try {
+      return getFontFamily(fontFileName);
+    } catch (error) {
+      console.error("Error getting font family:", error);
+      return { family: "Arial" };
+    }
+  });
+
+  // Get font path
+  ipcMain.handle("get-font-path", async (event, fontFileName) => {
+    try {
+      if (!savedPaths.fontPath || !fontFileName) return null;
+      const fontPath = path.join(savedPaths.fontPath, fontFileName);
+
+      // Önce dosyanın varlığını kontrol et
+      try {
+        await fs.access(fontPath);
+        console.log("Font file exists:", fontPath);
+      } catch {
+        console.error("Font file not found:", fontPath);
+        return null;
+      }
+
+      // Fontu oku ve base64'e çevir
+      const fontBuffer = await fs.readFile(fontPath);
+      const base64Font = fontBuffer.toString("base64");
+
+      // Font tipini belirle
+      const fontExtension = path.extname(fontFileName).slice(1).toLowerCase();
+      let mimeType = "application/x-font-ttf"; // TTF için daha uygun MIME type
+      if (fontExtension === "otf") mimeType = "application/x-font-opentype";
+      else if (fontExtension === "woff") mimeType = "application/font-woff";
+      else if (fontExtension === "woff2") mimeType = "application/font-woff2";
+
+      // Data URL'i oluştur
+      const dataUrl = `data:${mimeType};base64,${base64Font}`;
+      console.log("Font converted to data URL with type:", mimeType);
+      return dataUrl;
+    } catch (error) {
+      console.error("Error getting font path:", error);
+      return null;
+    }
+  });
+
+  // Process Excel and image with previews
+  ipcMain.handle(
+    "process-excel-and-image-with-previews",
+    async (event, previews) => {
+      try {
+        const outputDir = savedPaths.outputDir;
+        const activeExcel = store.get("activeExcelFile");
+
+        if (!outputDir) {
+          throw new Error("Output folder not selected");
+        }
+
+        if (!activeExcel) {
+          throw new Error("Excel file not selected");
+        }
+
+        // Create output directory
+        await fs.mkdir(outputDir, { recursive: true });
+
+        const results = [];
+        const errors = [];
+
+        // Her önizleme için
+        for (const [imageName, previewDataUrl] of previews) {
+          try {
+            // Base64'ten buffer'a çevir
+            const base64Data = previewDataUrl.replace(
+              /^data:image\/\w+;base64,/,
+              "",
+            );
+            const buffer = Buffer.from(base64Data, "base64");
+
+            // Dosya adını oluştur
+            const outputPath = path.join(
+              outputDir,
+              `${path.basename(activeExcel, ".xlsx")}-${path.basename(
+                imageName,
+              )}`,
+            );
+
+            // Kaydet
+            await fs.writeFile(outputPath, buffer);
+            results.push(outputPath);
+          } catch (error) {
+            console.error("Error saving preview:", error);
+            errors.push(`${imageName}: ${error.message}`);
+          }
+        }
+
+        return {
+          success: true,
+          results,
+          errors,
+          saveDir: outputDir,
+        };
+      } catch (error) {
+        console.error("Processing error:", error);
+        return { success: false, error: error.message };
+      }
+    },
+  );
+
+  // Output dosyalarını listele
+  ipcMain.handle("get-output-files", async () => {
+    try {
+      const outputPath = savedPaths.outputDir;
+      if (!outputPath) return [];
+
+      const files = await fs.readdir(outputPath);
+      return files.filter((file) => file.match(/\.(jpg|jpeg|png)$/i));
+    } catch (error) {
+      console.error("Error reading output directory:", error);
+      return [];
+    }
+  });
+
+  // Output dosyasının önizlemesini al
+  ipcMain.handle("get-output-preview", async (event, filename) => {
+    try {
+      const outputPath = savedPaths.outputDir;
+      if (!outputPath) return null;
+
+      const filePath = path.join(outputPath, filename);
+      const data = await fs.readFile(filePath);
+      return `data:image/png;base64,${data.toString("base64")}`;
+    } catch (error) {
+      console.error("Error reading output file:", error);
+      return null;
+    }
   });
 };

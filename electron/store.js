@@ -10,16 +10,18 @@ const store = new Store({
     },
     activeExcelFile: "",
     imagePositions: {},
-    imageScale: 1,
+    imageScale: 0,
   },
 });
 
 export const registerStoreHandlers = (ipcMain) => {
-  ipcMain.handle("get-store", (event, key) => {
+  // Get store value
+  ipcMain.handle("get-store", async (event, key) => {
     return store.get(key);
   });
 
-  ipcMain.handle("set-store", (event, key, value) => {
+  // Set store value
+  ipcMain.handle("set-store", async (event, key, value) => {
     store.set(key, value);
     return true;
   });

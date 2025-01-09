@@ -107,4 +107,20 @@ contextBridge.exposeInMainWorld("Electron", {
   getStore: (key) => ipcRenderer.invoke("get-store", key),
 
   setStore: (key, value) => ipcRenderer.invoke("set-store", key, value),
+
+  getImagePreview: (imageName) =>
+    ipcRenderer.invoke("get-image-preview", imageName),
+
+  getFontFamily: (fontFileName) =>
+    ipcRenderer.invoke("get-font-family", fontFileName),
+
+  getFontPath: (fontFileName) =>
+    ipcRenderer.invoke("get-font-path", fontFileName),
+
+  processExcelAndImageWithPreviews: (previews) =>
+    ipcRenderer.invoke("process-excel-and-image-with-previews", previews),
+
+  getOutputFiles: () => ipcRenderer.invoke("get-output-files"),
+  getOutputPreview: (filename) =>
+    ipcRenderer.invoke("get-output-preview", filename),
 });

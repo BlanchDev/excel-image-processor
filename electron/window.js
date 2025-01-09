@@ -19,29 +19,11 @@ export function createMainWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
+      sandbox: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true,
     },
   });
-
-  // CSP ayarla
-  mainWindow.webContents.session.webRequest.onHeadersReceived(
-    (details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          "Content-Security-Policy": [
-            "default-src 'self' 'unsafe-inline' data:;",
-            "script-src 'self' 'unsafe-inline';",
-            "style-src 'self' 'unsafe-inline';",
-            "img-src 'self' data: blob: file:;",
-            "font-src 'self' data:;",
-          ].join(" "),
-        },
-      });
-    },
-  );
 
   mainWindow.maximize();
 
