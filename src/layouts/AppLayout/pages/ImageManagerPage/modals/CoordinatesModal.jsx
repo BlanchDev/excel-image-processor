@@ -1,7 +1,7 @@
 import { useImageManager } from "../../context/AppContext";
 import PropTypes from "prop-types";
 import "./CoordinatesModal.scss";
-import { RgbaColorPicker } from "react-colorful";
+import { HexAlphaColorPicker } from "react-colorful";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
 function CoordinatesModal({ onClose, image }) {
@@ -15,6 +15,8 @@ function CoordinatesModal({ onClose, image }) {
   } = useImageManager();
 
   const [activeColorPicker, setActiveColorPicker] = useState(null);
+  const [textColorInput, setTextColorInput] = useState({});
+  const [bgColorInput, setBgColorInput] = useState({});
   const colorPickerRefs = useRef({});
   const canvasRef = useRef(null);
   const [previewScale, setPreviewScale] = useState(0.25);
@@ -186,6 +188,67 @@ function CoordinatesModal({ onClose, image }) {
     loadPreview();
   }, [previewScale, loadPreview]);
 
+  // Renk dönüşüm fonksiyonları
+  const rgbaToHex = (rgba) => {
+    const r = Math.round(rgba.r || 0)
+      .toString(16)
+      .padStart(2, "0");
+    const g = Math.round(rgba.g || 0)
+      .toString(16)
+      .padStart(2, "0");
+    const b = Math.round(rgba.b || 0)
+      .toString(16)
+      .padStart(2, "0");
+    const a = Math.round((rgba.a !== undefined ? rgba.a : 1) * 255)
+      .toString(16)
+      .padStart(2, "0");
+    return `#${r}${g}${b}${a}`;
+  };
+
+  const hexToRgba = (hex) => {
+    try {
+      // Hex kodunu temizle ve normalize et
+      hex = hex.trim().toLowerCase();
+
+      // # işareti yoksa ekle
+      if (!hex.startsWith("#")) {
+        hex = "#" + hex;
+      }
+
+      // 3 karakterli hex kodu (örn: #fff) -> 6 karaktere çevir
+      if (/^#[0-9a-f]{3}$/.test(hex)) {
+        hex = "#" + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+      }
+
+      // 6 karakterli hex kodu -> 8 karaktere çevir (tam opaklık ekle)
+      if (/^#[0-9a-f]{6}$/.test(hex)) {
+        hex = hex + "ff";
+      }
+
+      // 8 karakterli geçerli hex kodu
+      if (/^#[0-9a-f]{8}$/.test(hex)) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const a = parseInt(hex.slice(7, 9), 16) / 255;
+
+        return {
+          r: isNaN(r) ? 0 : r,
+          g: isNaN(g) ? 0 : g,
+          b: isNaN(b) ? 0 : b,
+          a: isNaN(a) ? 1 : a,
+        };
+      }
+
+      // Geçersiz hex kodu
+      console.warn("Invalid hex color:", hex);
+      return { r: 0, g: 0, b: 0, a: 1 };
+    } catch (error) {
+      console.error("Hex to RGBA conversion error:", error);
+      return { r: 0, g: 0, b: 0, a: 1 };
+    }
+  };
+
   return (
     <div className='coordinates-modal-overlay'>
       <button onClick={onClose} className='close-overlay-button' />
@@ -338,11 +401,66 @@ function CoordinatesModal({ onClose, image }) {
                               (colorPickerRefs.current[`${column}-color`] = el)
                             }
                           >
-                            <RgbaColorPicker
-                              color={columnPosition.color}
-                              onChange={(color) =>
-                                handleColorChange(image, column, color, "color")
+                            <HexAlphaColorPicker
+                              color={rgbaToHex(columnPosition.color)}
+                              onChange={(color) => {
+                                // Rengi güncelle
+                                handleColorChange(
+                                  image,
+                                  column,
+                                  hexToRgba(color),
+                                  "color",
+                                );
+                                // Input state'ini güncelle
+                                setTextColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: color,
+                                }));
+                              }}
+                            />
+                            <input
+                              type='text'
+                              className='hex-input'
+                              value={
+                                textColorInput[column] ??
+                                rgbaToHex(columnPosition.color)
                               }
+                              onChange={(e) => {
+                                let hex = e.target.value;
+                                // # işareti yoksa ve input boş değilse ekle
+                                if (hex && !hex.startsWith("#")) {
+                                  hex = "#" + hex;
+                                }
+                                // Input state'ini güncelle
+                                setTextColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: hex,
+                                }));
+                                // Geçerli bir hex kodu ise rengi güncelle
+                                if (
+                                  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+                                    hex,
+                                  )
+                                ) {
+                                  handleColorChange(
+                                    image,
+                                    column,
+                                    hexToRgba(hex),
+                                    "color",
+                                  );
+                                }
+                              }}
+                              onBlur={() => {
+                                // Input'tan çıkınca geçerli renk değerini al
+                                const currentColor = rgbaToHex(
+                                  columnPosition.color,
+                                );
+                                // State'i güncelle
+                                setTextColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: currentColor,
+                                }));
+                              }}
                             />
                           </div>
                         )}
@@ -376,16 +494,66 @@ function CoordinatesModal({ onClose, image }) {
                               (colorPickerRefs.current[`${column}-bg`] = el)
                             }
                           >
-                            <RgbaColorPicker
-                              color={columnPosition.backgroundColor}
-                              onChange={(color) =>
+                            <HexAlphaColorPicker
+                              color={rgbaToHex(columnPosition.backgroundColor)}
+                              onChange={(color) => {
+                                // Rengi güncelle
                                 handleColorChange(
                                   image,
                                   column,
-                                  color,
+                                  hexToRgba(color),
                                   "backgroundColor",
-                                )
+                                );
+                                // Input state'ini güncelle
+                                setBgColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: color,
+                                }));
+                              }}
+                            />
+                            <input
+                              type='text'
+                              className='hex-input'
+                              value={
+                                bgColorInput[column] ??
+                                rgbaToHex(columnPosition.backgroundColor)
                               }
+                              onChange={(e) => {
+                                let hex = e.target.value;
+                                // # işareti yoksa ve input boş değilse ekle
+                                if (hex && !hex.startsWith("#")) {
+                                  hex = "#" + hex;
+                                }
+                                // Input state'ini güncelle
+                                setBgColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: hex,
+                                }));
+                                // Geçerli bir hex kodu ise rengi güncelle
+                                if (
+                                  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+                                    hex,
+                                  )
+                                ) {
+                                  handleColorChange(
+                                    image,
+                                    column,
+                                    hexToRgba(hex),
+                                    "backgroundColor",
+                                  );
+                                }
+                              }}
+                              onBlur={() => {
+                                // Input'tan çıkınca geçerli renk değerini al
+                                const currentColor = rgbaToHex(
+                                  columnPosition.backgroundColor,
+                                );
+                                // State'i güncelle
+                                setBgColorInput((prev) => ({
+                                  ...prev,
+                                  [column]: currentColor,
+                                }));
+                              }}
                             />
                           </div>
                         )}

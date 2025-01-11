@@ -22,12 +22,14 @@ export function createMainWindow() {
       sandbox: false,
       webSecurity: false,
       allowRunningInsecureContent: true,
+      backgroundThrottling: false,
+      enableAccelerated2dCanvas: true,
+      enableHardwareAcceleration: true,
     },
   });
 
   mainWindow.maximize();
 
-  // Load based on development or production mode
   const isDev = !app.isPackaged;
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
