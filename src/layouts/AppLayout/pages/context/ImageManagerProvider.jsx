@@ -15,13 +15,14 @@ function ImageManagerProvider({ children }) {
 
   const DEFAULT_COLUMN_POSITION = useMemo(
     () => ({
-      x: 50,
-      y: 50,
       isEnabled: false,
-      fontSize: 50,
-      fontFamily: "Arial",
+      x: 0,
+      y: 0,
+      fontSize: 12,
+      fontFamily: "",
+      alignment: "left",
       color: { r: 0, g: 0, b: 0, a: 1 },
-      backgroundColor: { r: 255, g: 255, b: 255, a: 0 },
+      backgroundColor: { r: 255, g: 255, b: 255, a: 1 },
     }),
     [],
   );
@@ -82,7 +83,8 @@ function ImageManagerProvider({ children }) {
                 property === "fontFamily" ||
                 property === "color" ||
                 property === "backgroundColor" ||
-                property === "isEnabled"
+                property === "isEnabled" ||
+                property === "alignment"
                   ? value
                   : parseInt(value) || 0,
             },

@@ -100,28 +100,28 @@ function HomePage() {
           // Font ayarlarını yap
           const fontSize = pos.fontSize || 12;
           ctx.font = `${fontSize}px "${fontInfo.family}"`;
-          console.log("Font string:", ctx.font);
           ctx.textBaseline = "top";
 
-          // Letter spacing için her karakteri ayrı çiz
-          let currentX = pos.x / useScale; // Scale'e göre pozisyonu ayarla
-          const spacing = 0.5;
+          // Text alignment ayarını uygula
+          ctx.textAlign = pos.alignment || "left";
 
-          // Önce arkaplanı çiz
-          const totalWidth =
-            ctx.measureText(text).width + (text.length - 1) * spacing;
+          // Metin genişliğini hesapla
+          const textWidth = ctx.measureText(text).width;
           const textHeight = fontSize;
 
+          // Arkaplanı çiz
           ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
-          ctx.fillRect(currentX, pos.y / useScale, totalWidth, textHeight);
 
-          // Sonra her karakteri çiz
+          // Arkaplan pozisyonunu alignment'a göre ayarla
+          const bgX =
+            ctx.textAlign === "right"
+              ? pos.x / useScale - textWidth
+              : pos.x / useScale;
+          ctx.fillRect(bgX, pos.y / useScale, textWidth, textHeight);
+
+          // Metni çiz
           ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
-
-          for (let char of text) {
-            ctx.fillText(char, currentX, pos.y / useScale);
-            currentX += ctx.measureText(char).width + spacing;
-          }
+          ctx.fillText(text, pos.x / useScale, pos.y / useScale);
         }
 
         // Preview için küçült

@@ -126,28 +126,25 @@ function CoordinatesModal({ onClose, image }) {
           // Font ayarlarını yap
           const fontSize = pos.fontSize || 12;
           ctx.font = `${fontSize}px "${fontInfo.family}"`;
-          console.log("Font string:", ctx.font);
           ctx.textBaseline = "top";
 
-          // Letter spacing için her karakteri ayrı çiz
-          let currentX = pos.x;
-          const spacing = 0.5;
+          // Text alignment ayarını uygula
+          ctx.textAlign = pos.alignment || "left";
 
-          // Önce arkaplanı çiz
-          const totalWidth =
-            ctx.measureText(text).width + (text.length - 1) * spacing;
+          // Metin genişliğini hesapla
+          const textWidth = ctx.measureText(text).width;
           const textHeight = fontSize;
 
+          // Arkaplanı çiz
           ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
-          ctx.fillRect(pos.x, pos.y, totalWidth, textHeight);
 
-          // Sonra her karakteri çiz
+          // Arkaplan pozisyonunu alignment'a göre ayarla
+          const bgX = ctx.textAlign === "right" ? pos.x - textWidth : pos.x;
+          ctx.fillRect(bgX, pos.y, textWidth, textHeight);
+
+          // Metni çiz
           ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
-
-          for (let char of text) {
-            ctx.fillText(char, currentX, pos.y);
-            currentX += ctx.measureText(char).width + spacing;
-          }
+          ctx.fillText(text, pos.x, pos.y);
         }
       };
       img.src = imageData;
@@ -270,6 +267,7 @@ function CoordinatesModal({ onClose, image }) {
                 <th>Y Coordinate</th>
                 <th>Font Size</th>
                 <th>Font</th>
+                <th>Alignment</th>
                 <th>Text Color</th>
                 <th>Background</th>
               </tr>
@@ -370,6 +368,23 @@ function CoordinatesModal({ onClose, image }) {
                               {font.displayName}
                             </option>
                           ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={columnPosition.alignment || "left"}
+                        onChange={(e) =>
+                          handlePositionChange(
+                            image,
+                            column,
+                            "alignment",
+                            e.target.value,
+                          )
+                        }
+                        disabled={isImgPathColumn || !columnPosition.isEnabled}
+                      >
+                        <option value='left'>Left</option>
+                        <option value='right'>Right</option>
                       </select>
                     </td>
                     <td>
