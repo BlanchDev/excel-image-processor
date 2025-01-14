@@ -32,7 +32,9 @@ function StorageLogsPage() {
         <h1>Storage Logs</h1>
         <div className='storage-logs'>
           <div className='config-section'>
-            <h2>Image Positions Store</h2>
+            <div className='w100 h100 row aic jcsb'>
+              <h2>Image Positions Store</h2>
+            </div>
             {loading ? (
               <div className='info'>Loading...</div>
             ) : error ? (
