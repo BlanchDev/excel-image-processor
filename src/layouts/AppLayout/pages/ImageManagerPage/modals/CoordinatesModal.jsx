@@ -246,23 +246,79 @@ function CoordinatesModal({ onClose, image }) {
     }
   };
 
+  const handleAllTextWhite = () => {
+    excelColumns.forEach((column, index) => {
+      setTimeout(() => {
+        const button = document.getElementById(`${column}-make-white`);
+        if (button) button.click();
+      }, index * 1);
+    });
+    loadPreview();
+  };
+
+  const handleAllTextBlack = () => {
+    excelColumns.forEach((column, index) => {
+      setTimeout(() => {
+        const button = document.getElementById(`${column}-make-black`);
+        if (button) button.click();
+      }, index * 1);
+    });
+    loadPreview();
+  };
+
+  const handleAllBgTransparent = () => {
+    excelColumns.forEach((column, index) => {
+      setTimeout(() => {
+        const button = document.getElementById(`${column}-make-transparent`);
+        if (button) button.click();
+      }, index * 1);
+    });
+    loadPreview();
+  };
+
   return (
     <div className='coordinates-modal-overlay'>
       <button onClick={onClose} className='close-overlay-button' />
       <div className='coordinates-modal'>
-        <div className='coordinates-modal-header'>
+        <div className='coordinates-modal-header row aic jcsb'>
           <h3>{image} - Column Settings</h3>
-          <button className='close-button' onClick={onClose}>
-            ×
-          </button>
+          <div className='row aic gap20'>
+            <div className='row aic'>
+              <div className='column'>
+                <button className='fast-button' onClick={handleAllTextWhite}>
+                  All Text White
+                </button>
+                <button className='fast-button' onClick={handleAllTextBlack}>
+                  All Text Black
+                </button>
+              </div>
+              <div className='column'>
+                <button
+                  className='fast-button'
+                  onClick={handleAllBgTransparent}
+                >
+                  All BG Transparent
+                </button>
+              </div>
+            </div>
+            <button className='close-button' onClick={onClose}>
+              ×
+            </button>
+          </div>
         </div>
 
         <div className='coordinates-modal-content'>
           <table className='coordinates-table'>
             <thead>
               <tr>
-                <th>Column</th>
-                <th>Use</th>
+                <th>Column {excelColumns.length}</th>
+                <th>
+                  Use{" "}
+                  {
+                    Object.values(imagePositions).filter((key) => key.isEnabled)
+                      .length
+                  }
+                </th>
                 <th>X Coordinate</th>
                 <th>Y Coordinate</th>
                 <th>Font Size</th>
@@ -388,190 +444,239 @@ function CoordinatesModal({ onClose, image }) {
                       </select>
                     </td>
                     <td>
-                      <div
-                        className={`color-preview ${
-                          isImgPathColumn || !columnPosition.isEnabled
-                            ? "disabled"
-                            : ""
-                        }`}
-                        style={{
-                          backgroundColor: `rgba(${columnPosition.color.r}, ${columnPosition.color.g}, ${columnPosition.color.b}, ${columnPosition.color.a})`,
-                        }}
-                        onClick={() => {
-                          if (!isImgPathColumn && columnPosition.isEnabled) {
-                            setActiveColorPicker(
-                              activeColorPicker === `${column}-color`
-                                ? null
-                                : `${column}-color`,
-                            );
+                      <div className='hidden'>
+                        <button
+                          id={`${column}-make-white`}
+                          onClick={() =>
+                            handleColorChange(
+                              image,
+                              column,
+                              { r: 255, g: 255, b: 255, a: 1 },
+                              "color",
+                            )
                           }
-                        }}
-                      />
-                      {activeColorPicker === `${column}-color` &&
-                        !isImgPathColumn &&
-                        columnPosition.isEnabled && (
-                          <div
-                            className='color-picker-popup'
-                            ref={(el) =>
-                              (colorPickerRefs.current[`${column}-color`] = el)
+                        />
+                        <button
+                          id={`${column}-make-black`}
+                          onClick={() =>
+                            handleColorChange(
+                              image,
+                              column,
+                              { r: 0, g: 0, b: 0, a: 1 },
+                              "color",
+                            )
+                          }
+                        />
+                      </div>
+                      <div
+                        className='color-picker-container column'
+                        ref={(el) =>
+                          (colorPickerRefs.current[`${column}-color`] = el)
+                        }
+                      >
+                        <button
+                          type='button'
+                          className={`color-preview ${
+                            isImgPathColumn || !columnPosition.isEnabled
+                              ? "disabled"
+                              : ""
+                          }`}
+                          style={{
+                            backgroundColor: `rgba(${columnPosition.color.r}, ${columnPosition.color.g}, ${columnPosition.color.b}, ${columnPosition.color.a})`,
+                          }}
+                          onClick={() => {
+                            if (!isImgPathColumn && columnPosition.isEnabled) {
+                              setActiveColorPicker((prev) =>
+                                prev === `${column}-color`
+                                  ? null
+                                  : `${column}-color`,
+                              );
                             }
-                          >
-                            <HexAlphaColorPicker
-                              color={rgbaToHex(columnPosition.color)}
-                              onChange={(color) => {
-                                // Rengi güncelle
-                                handleColorChange(
-                                  image,
-                                  column,
-                                  hexToRgba(color),
-                                  "color",
-                                );
-                                // Input state'ini güncelle
-                                setTextColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: color,
-                                }));
-                              }}
-                            />
-                            <input
-                              type='text'
-                              className='hex-input'
-                              value={
-                                textColorInput[column] ??
-                                rgbaToHex(columnPosition.color)
-                              }
-                              onChange={(e) => {
-                                let hex = e.target.value;
-                                // # işareti yoksa ve input boş değilse ekle
-                                if (hex && !hex.startsWith("#")) {
-                                  hex = "#" + hex;
-                                }
-                                // Input state'ini güncelle
-                                setTextColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: hex,
-                                }));
-                                // Geçerli bir hex kodu ise rengi güncelle
-                                if (
-                                  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
-                                    hex,
-                                  )
-                                ) {
-                                  handleColorChange(
-                                    image,
-                                    column,
-                                    hexToRgba(hex),
-                                    "color",
-                                  );
-                                }
-                              }}
-                              onBlur={() => {
-                                // Input'tan çıkınca geçerli renk değerini al
-                                const currentColor = rgbaToHex(
-                                  columnPosition.color,
-                                );
-                                // State'i güncelle
-                                setTextColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: currentColor,
-                                }));
-                              }}
-                            />
-                          </div>
-                        )}
+                          }}
+                        />
+                        {activeColorPicker === `${column}-color` &&
+                          !isImgPathColumn &&
+                          columnPosition.isEnabled && (
+                            <div className='color-picker-popup column aic gap20'>
+                              <p>{column} text</p>
+                              <div className='column'>
+                                <HexAlphaColorPicker
+                                  color={rgbaToHex(columnPosition.color)}
+                                  onChange={(color) => {
+                                    // Rengi güncelle
+                                    handleColorChange(
+                                      image,
+                                      column,
+                                      hexToRgba(color),
+                                      "color",
+                                    );
+                                    // Input state'ini güncelle
+                                    setTextColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: color,
+                                    }));
+                                  }}
+                                />
+                                <input
+                                  type='text'
+                                  className='hex-input'
+                                  value={
+                                    textColorInput[column] ??
+                                    rgbaToHex(columnPosition.color)
+                                  }
+                                  onChange={(e) => {
+                                    let hex = e.target.value;
+                                    // # işareti yoksa ve input boş değilse ekle
+                                    if (hex && !hex.startsWith("#")) {
+                                      hex = "#" + hex;
+                                    }
+                                    // Input state'ini güncelle
+                                    setTextColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: hex,
+                                    }));
+                                    // Geçerli bir hex kodu ise rengi güncelle
+                                    if (
+                                      /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+                                        hex,
+                                      )
+                                    ) {
+                                      handleColorChange(
+                                        image,
+                                        column,
+                                        hexToRgba(hex),
+                                        "color",
+                                      );
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    // Input'tan çıkınca geçerli renk değerini al
+                                    const currentColor = rgbaToHex(
+                                      columnPosition.color,
+                                    );
+                                    // State'i güncelle
+                                    setTextColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: currentColor,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                      </div>
                     </td>
                     <td>
-                      <div
-                        className={`color-preview ${
-                          isImgPathColumn || !columnPosition.isEnabled
-                            ? "disabled"
-                            : ""
-                        }`}
-                        style={{
-                          backgroundColor: `rgba(${columnPosition.backgroundColor.r}, ${columnPosition.backgroundColor.g}, ${columnPosition.backgroundColor.b}, ${columnPosition.backgroundColor.a})`,
-                        }}
-                        onClick={() => {
-                          if (!isImgPathColumn && columnPosition.isEnabled) {
-                            setActiveColorPicker(
-                              activeColorPicker === `${column}-bg`
-                                ? null
-                                : `${column}-bg`,
-                            );
+                      <div className='hidden'>
+                        <button
+                          id={`${column}-make-transparent`}
+                          onClick={() =>
+                            handleColorChange(
+                              image,
+                              column,
+                              { r: 255, g: 255, b: 255, a: 0 },
+                              "backgroundColor",
+                            )
                           }
-                        }}
-                      />
-                      {activeColorPicker === `${column}-bg` &&
-                        !isImgPathColumn &&
-                        columnPosition.isEnabled && (
-                          <div
-                            className='color-picker-popup'
-                            ref={(el) =>
-                              (colorPickerRefs.current[`${column}-bg`] = el)
+                        />
+                      </div>
+                      <div
+                        className='color-picker-container column'
+                        ref={(el) =>
+                          (colorPickerRefs.current[`${column}-bg`] = el)
+                        }
+                      >
+                        <button
+                          type='button'
+                          className={`color-preview ${
+                            isImgPathColumn || !columnPosition.isEnabled
+                              ? "disabled"
+                              : ""
+                          }`}
+                          style={{
+                            backgroundColor: `rgba(${columnPosition.backgroundColor.r}, ${columnPosition.backgroundColor.g}, ${columnPosition.backgroundColor.b}, ${columnPosition.backgroundColor.a})`,
+                          }}
+                          onClick={() => {
+                            if (!isImgPathColumn && columnPosition.isEnabled) {
+                              setActiveColorPicker((prev) =>
+                                prev === `${column}-bg` ? null : `${column}-bg`,
+                              );
                             }
-                          >
-                            <HexAlphaColorPicker
-                              color={rgbaToHex(columnPosition.backgroundColor)}
-                              onChange={(color) => {
-                                // Rengi güncelle
-                                handleColorChange(
-                                  image,
-                                  column,
-                                  hexToRgba(color),
-                                  "backgroundColor",
-                                );
-                                // Input state'ini güncelle
-                                setBgColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: color,
-                                }));
-                              }}
-                            />
-                            <input
-                              type='text'
-                              className='hex-input'
-                              value={
-                                bgColorInput[column] ??
-                                rgbaToHex(columnPosition.backgroundColor)
-                              }
-                              onChange={(e) => {
-                                let hex = e.target.value;
-                                // # işareti yoksa ve input boş değilse ekle
-                                if (hex && !hex.startsWith("#")) {
-                                  hex = "#" + hex;
-                                }
-                                // Input state'ini güncelle
-                                setBgColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: hex,
-                                }));
-                                // Geçerli bir hex kodu ise rengi güncelle
-                                if (
-                                  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
-                                    hex,
-                                  )
-                                ) {
-                                  handleColorChange(
-                                    image,
-                                    column,
-                                    hexToRgba(hex),
-                                    "backgroundColor",
-                                  );
-                                }
-                              }}
-                              onBlur={() => {
-                                // Input'tan çıkınca geçerli renk değerini al
-                                const currentColor = rgbaToHex(
-                                  columnPosition.backgroundColor,
-                                );
-                                // State'i güncelle
-                                setBgColorInput((prev) => ({
-                                  ...prev,
-                                  [column]: currentColor,
-                                }));
-                              }}
-                            />
-                          </div>
-                        )}
+                          }}
+                        />
+                        {activeColorPicker === `${column}-bg` &&
+                          !isImgPathColumn &&
+                          columnPosition.isEnabled && (
+                            <div className='color-picker-popup column aic gap20'>
+                              <p>{column} bg</p>
+                              <div className='column'>
+                                <HexAlphaColorPicker
+                                  color={rgbaToHex(
+                                    columnPosition.backgroundColor,
+                                  )}
+                                  onChange={(color) => {
+                                    // Rengi güncelle
+                                    handleColorChange(
+                                      image,
+                                      column,
+                                      hexToRgba(color),
+                                      "backgroundColor",
+                                    );
+                                    // Input state'ini güncelle
+                                    setBgColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: color,
+                                    }));
+                                  }}
+                                />
+                                <input
+                                  type='text'
+                                  className='hex-input'
+                                  value={
+                                    bgColorInput[column] ??
+                                    rgbaToHex(columnPosition.backgroundColor)
+                                  }
+                                  onChange={(e) => {
+                                    let hex = e.target.value;
+                                    // # işareti yoksa ve input boş değilse ekle
+                                    if (hex && !hex.startsWith("#")) {
+                                      hex = "#" + hex;
+                                    }
+                                    // Input state'ini güncelle
+                                    setBgColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: hex,
+                                    }));
+                                    // Geçerli bir hex kodu ise rengi güncelle
+                                    if (
+                                      /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+                                        hex,
+                                      )
+                                    ) {
+                                      handleColorChange(
+                                        image,
+                                        column,
+                                        hexToRgba(hex),
+                                        "backgroundColor",
+                                      );
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    // Input'tan çıkınca geçerli renk değerini al
+                                    const currentColor = rgbaToHex(
+                                      columnPosition.backgroundColor,
+                                    );
+                                    // State'i güncelle
+                                    setBgColorInput((prev) => ({
+                                      ...prev,
+                                      [column]: currentColor,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                      </div>
                     </td>
                   </tr>
                 );
