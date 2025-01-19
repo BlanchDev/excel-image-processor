@@ -102,26 +102,60 @@ function HomePage() {
           ctx.font = `${fontSize}px "${fontInfo.family}"`;
           ctx.textBaseline = "top";
 
-          // Text alignment ayarını uygula
-          ctx.textAlign = pos.alignment || "left";
+          // Letter spacing ayarını uygula
+          const letterSpacing = (pos.letterSpacing || 0) * (fontSize / 12); // Font boyutuna göre ölçekle
+          if (letterSpacing !== 0) {
+            // Letter spacing için metni karakter karakter çiz
+            const chars = text.split("");
 
-          // Metin genişliğini hesapla
-          const textWidth = ctx.measureText(text).width;
-          const textHeight = fontSize;
+            // Toplam genişliği hesapla
+            let totalWidth = 0;
+            const charWidths = chars.map((char) => {
+              const width = ctx.measureText(char).width;
+              totalWidth += width;
+              return width;
+            });
+            // Son karakter hariç letter spacing ekle
+            totalWidth += letterSpacing * (chars.length - 1);
 
-          // Arkaplanı çiz
-          ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            // Başlangıç X pozisyonunu alignment'a göre ayarla
+            let currentX = pos.x / useScale;
+            if (pos.alignment === "right") {
+              currentX = pos.x / useScale - totalWidth;
+            }
 
-          // Arkaplan pozisyonunu alignment'a göre ayarla
-          const bgX =
-            ctx.textAlign === "right"
-              ? pos.x / useScale - textWidth
-              : pos.x / useScale;
-          ctx.fillRect(bgX, pos.y / useScale, textWidth, textHeight);
+            // Arkaplanı çiz
+            ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            ctx.fillRect(currentX, pos.y / useScale, totalWidth, fontSize);
 
-          // Metni çiz
-          ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
-          ctx.fillText(text, pos.x / useScale, pos.y / useScale);
+            // Metni karakter karakter çiz
+            ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
+            chars.forEach((char, index) => {
+              ctx.fillText(char, currentX, pos.y / useScale);
+              currentX +=
+                charWidths[index] +
+                (index < chars.length - 1 ? letterSpacing : 0);
+            });
+          } else {
+            // Normal metin çizimi (letter spacing olmadan)
+            ctx.textAlign = pos.alignment || "left";
+
+            // Metin genişliğini hesapla
+            const textWidth = ctx.measureText(text).width;
+            const textHeight = fontSize;
+
+            // Arkaplanı çiz
+            ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            const bgX =
+              ctx.textAlign === "right"
+                ? pos.x / useScale - textWidth
+                : pos.x / useScale;
+            ctx.fillRect(bgX, pos.y / useScale, textWidth, textHeight);
+
+            // Metni çiz
+            ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
+            ctx.fillText(text, pos.x / useScale, pos.y / useScale);
+          }
         }
 
         // Preview için küçült

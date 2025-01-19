@@ -128,23 +128,57 @@ function CoordinatesModal({ onClose, image }) {
           ctx.font = `${fontSize}px "${fontInfo.family}"`;
           ctx.textBaseline = "top";
 
-          // Text alignment ayarını uygula
-          ctx.textAlign = pos.alignment || "left";
+          // Letter spacing ayarını uygula
+          const letterSpacing = (pos.letterSpacing || 0) * (fontSize / 12); // Font boyutuna göre ölçekle
+          if (letterSpacing !== 0) {
+            // Letter spacing için metni karakter karakter çiz
+            const chars = text.split("");
 
-          // Metin genişliğini hesapla
-          const textWidth = ctx.measureText(text).width;
-          const textHeight = fontSize;
+            // Toplam genişliği hesapla
+            let totalWidth = 0;
+            const charWidths = chars.map((char) => {
+              const width = ctx.measureText(char).width;
+              totalWidth += width;
+              return width;
+            });
+            // Son karakter hariç letter spacing ekle
+            totalWidth += letterSpacing * (chars.length - 1);
 
-          // Arkaplanı çiz
-          ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            // Başlangıç X pozisyonunu alignment'a göre ayarla
+            let currentX = pos.x;
+            if (pos.alignment === "right") {
+              currentX = pos.x - totalWidth;
+            }
 
-          // Arkaplan pozisyonunu alignment'a göre ayarla
-          const bgX = ctx.textAlign === "right" ? pos.x - textWidth : pos.x;
-          ctx.fillRect(bgX, pos.y, textWidth, textHeight);
+            // Arkaplanı çiz
+            ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            ctx.fillRect(currentX, pos.y, totalWidth, fontSize);
 
-          // Metni çiz
-          ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
-          ctx.fillText(text, pos.x, pos.y);
+            // Metni karakter karakter çiz
+            ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
+            chars.forEach((char, index) => {
+              ctx.fillText(char, currentX, pos.y);
+              currentX +=
+                charWidths[index] +
+                (index < chars.length - 1 ? letterSpacing : 0);
+            });
+          } else {
+            // Normal metin çizimi (letter spacing olmadan)
+            ctx.textAlign = pos.alignment || "left";
+
+            // Metin genişliğini hesapla
+            const textWidth = ctx.measureText(text).width;
+            const textHeight = fontSize;
+
+            // Arkaplanı çiz
+            ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
+            const bgX = ctx.textAlign === "right" ? pos.x - textWidth : pos.x;
+            ctx.fillRect(bgX, pos.y, textWidth, textHeight);
+
+            // Metni çiz
+            ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
+            ctx.fillText(text, pos.x, pos.y);
+          }
         }
       };
       img.src = imageData;
@@ -246,24 +280,13 @@ function CoordinatesModal({ onClose, image }) {
     }
   };
 
-  const handleAllTextWhite = () => {
+  const handleAllTextColor = (wantedColor) => {
     excelColumns.forEach((column, index) => {
       setTimeout(() => {
-        const button = document.getElementById(`${column}-make-white`);
+        const button = document.getElementById(`${column}-make-${wantedColor}`);
         if (button) button.click();
       }, index * 1);
     });
-    loadPreview();
-  };
-
-  const handleAllTextBlack = () => {
-    excelColumns.forEach((column, index) => {
-      setTimeout(() => {
-        const button = document.getElementById(`${column}-make-black`);
-        if (button) button.click();
-      }, index * 1);
-    });
-    loadPreview();
   };
 
   const handleAllBgTransparent = () => {
@@ -273,7 +296,6 @@ function CoordinatesModal({ onClose, image }) {
         if (button) button.click();
       }, index * 1);
     });
-    loadPreview();
   };
 
   return (
@@ -285,10 +307,16 @@ function CoordinatesModal({ onClose, image }) {
           <div className='row aic gap20'>
             <div className='row aic'>
               <div className='column'>
-                <button className='fast-button' onClick={handleAllTextWhite}>
+                <button
+                  className='fast-button'
+                  onClick={() => handleAllTextColor("white")}
+                >
                   All Text White
                 </button>
-                <button className='fast-button' onClick={handleAllTextBlack}>
+                <button
+                  className='fast-button'
+                  onClick={() => handleAllTextColor("black")}
+                >
                   All Text Black
                 </button>
               </div>
@@ -324,6 +352,7 @@ function CoordinatesModal({ onClose, image }) {
                 <th>Font Size</th>
                 <th>Font</th>
                 <th>Alignment</th>
+                <th>Letter Spacing</th>
                 <th>Text Color</th>
                 <th>Background</th>
               </tr>
@@ -442,6 +471,24 @@ function CoordinatesModal({ onClose, image }) {
                         <option value='left'>Left</option>
                         <option value='right'>Right</option>
                       </select>
+                    </td>
+                    <td>
+                      <input
+                        type='number'
+                        value={columnPosition.letterSpacing || 0}
+                        onChange={(e) =>
+                          handlePositionChange(
+                            image,
+                            column,
+                            "letterSpacing",
+                            e.target.value,
+                          )
+                        }
+                        disabled={isImgPathColumn || !columnPosition.isEnabled}
+                        min='-10'
+                        max='50'
+                        step='0.5'
+                      />
                     </td>
                     <td>
                       <div className='hidden'>

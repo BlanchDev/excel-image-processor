@@ -38,6 +38,7 @@ const { contextBridge, ipcRenderer } = require("electron");
  * @property {number} fontSize - Font size
  * @property {string} fontFamily - Font family
  * @property {string} alignment - Text alignment (left or right)
+ * @property {number} letterSpacing - Letter spacing value
  * @property {Color} color - Text color
  * @property {Color} backgroundColor - Background color
  */

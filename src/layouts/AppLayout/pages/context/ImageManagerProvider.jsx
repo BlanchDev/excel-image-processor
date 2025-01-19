@@ -21,6 +21,7 @@ function ImageManagerProvider({ children }) {
       fontSize: 12,
       fontFamily: "",
       alignment: "left",
+      letterSpacing: 0,
       color: { r: 0, g: 0, b: 0, a: 1 },
       backgroundColor: { r: 255, g: 255, b: 255, a: 0 },
     }),
@@ -84,7 +85,8 @@ function ImageManagerProvider({ children }) {
                 property === "color" ||
                 property === "backgroundColor" ||
                 property === "isEnabled" ||
-                property === "alignment"
+                property === "alignment" ||
+                property === "letterSpacing"
                   ? value
                   : parseInt(value) || 0,
             },
