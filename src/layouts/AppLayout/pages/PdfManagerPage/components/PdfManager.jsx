@@ -6,6 +6,7 @@ import { useImageManager } from "../../context/AppContext";
 const PdfManager = () => {
   const { pdfReplacements, currentExcel } = useImageManager();
   const [pdfs, setPdfs] = useState([]);
+  const [excelData, setExcelData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [stats, setStats] = useState({
@@ -19,6 +20,10 @@ const PdfManager = () => {
     try {
       const pdfList = await window.Electron.getPdfList();
       setPdfs(pdfList);
+
+      // Excel verilerini yükle
+      const data = await window.Electron.getExcelData();
+      setExcelData(data);
     } catch (error) {
       console.error("Error loading PDFs:", error);
     }
@@ -36,6 +41,13 @@ const PdfManager = () => {
     [pdfReplacements],
   );
 
+  const isPdfInExcel = useCallback(
+    (pdf) => {
+      return excelData.some((row) => row.img_path === pdf);
+    },
+    [excelData],
+  );
+
   useEffect(() => {
     const calculateStats = () => {
       const newStats = {
@@ -46,10 +58,7 @@ const PdfManager = () => {
       };
 
       pdfs.forEach((pdf) => {
-        const isInExcel =
-          pdfReplacements &&
-          pdfReplacements[pdf] &&
-          Object.keys(pdfReplacements[pdf]).length > 0;
+        const isInExcel = isPdfInExcel(pdf);
 
         if (!isInExcel) {
           newStats.notInExcel++;
@@ -67,7 +76,7 @@ const PdfManager = () => {
     };
 
     calculateStats();
-  }, [pdfs, pdfReplacements, getActiveFieldCount]);
+  }, [pdfs, pdfReplacements, getActiveFieldCount, isPdfInExcel]);
 
   const handleEditClick = (pdf) => {
     setSelectedPdf(pdf);
@@ -75,10 +84,7 @@ const PdfManager = () => {
   };
 
   const getStatus = (pdf) => {
-    const isInExcel =
-      pdfReplacements &&
-      pdfReplacements[pdf] &&
-      Object.keys(pdfReplacements[pdf]).length > 0;
+    const isInExcel = isPdfInExcel(pdf);
     if (!isInExcel) return "not-in-excel";
 
     const activeFields = getActiveFieldCount(pdf);
