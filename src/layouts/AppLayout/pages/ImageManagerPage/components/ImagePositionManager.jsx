@@ -1,10 +1,16 @@
 import { useImageManager } from "../../context/AppContext";
 import "./ImagePositionManager.scss";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import CoordinatesModal from "../modals/CoordinatesModal";
 
 function ImagePositionManager() {
   const [showCoordinatesModal, setShowCoordinatesModal] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    notInExcel: 0,
+  });
 
   const { images, positions, excelImagePaths, loadData, currentExcel } =
     useImageManager();
@@ -13,25 +19,75 @@ function ImagePositionManager() {
     loadData();
   }, [loadData]);
 
-  const getEnabledColumnsCount = (image) => {
-    if (!positions[image]) return 0;
-    return Object.values(positions[image]).filter((col) => col.isEnabled)
-      .length;
-  };
+  const getEnabledColumnsCount = useCallback(
+    (image) => {
+      if (!positions[image]) return 0;
+      return Object.values(positions[image]).filter((col) => col.isEnabled)
+        .length;
+    },
+    [positions],
+  );
+
+  useEffect(() => {
+    // İstatistikleri hesapla
+    const newStats = {
+      total: images.length,
+      active: 0,
+      inactive: 0,
+      notInExcel: 0,
+    };
+
+    images.forEach((image) => {
+      const enabledColumns = getEnabledColumnsCount(image);
+      const isInExcel = excelImagePaths.includes(image);
+
+      if (!isInExcel) {
+        newStats.notInExcel++;
+      } else if (enabledColumns === 0) {
+        newStats.inactive++;
+      } else {
+        newStats.active++;
+      }
+    });
+
+    setStats(newStats);
+  }, [images, positions, excelImagePaths, getEnabledColumnsCount]);
 
   return (
     <div className='image-position-manager-container column'>
-      <div className='image-position-manager-header row aic'>
-        <h3>Image Positions ({currentExcel})</h3>
+      <div className='image-position-manager-header row aic jcsb'>
+        <h2>Image Manager</h2>
+        <div className='stats-container row gap10'>
+          <div className='stat-item'>
+            <span className='stat-label'>Total:</span>
+            <span className='stat-value'>{stats.total}</span>
+          </div>
+          <div className='stat-item active'>
+            <span className='stat-label'>Active:</span>
+            <span className='stat-value'>{stats.active}</span>
+          </div>
+          <div className='stat-item inactive'>
+            <span className='stat-label'>Inactive:</span>
+            <span className='stat-value'>{stats.inactive}</span>
+          </div>
+          <div className='stat-item not-in-excel'>
+            <span className='stat-label'>Not in Excel:</span>
+            <span className='stat-value'>{stats.notInExcel}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className='current-excel'>
+        <h3>Current Excel: {currentExcel || "No Excel Selected"}</h3>
       </div>
 
       <table className='table'>
         <thead className='table-header'>
           <tr>
-            <th className='table-title'>
-              Images ({images.length}) <h5>({currentExcel})</h5>
-            </th>
-            <th className='table-title'>Column Settings</th>
+            <th className='table-title'>#</th>
+            <th className='table-title'>Image Name</th>
+            <th className='table-title'>Status</th>
+            <th className='table-title'>Actions</th>
           </tr>
         </thead>
         <tbody className='table-body'>
@@ -46,16 +102,27 @@ function ImagePositionManager() {
                   enabledColumns === 0 && "deactivated"
                 } ${!isInExcel && "unused"}`}
               >
+                <td className='id-column'>{index + 1}</td>
                 <td>
-                  <span
-                    className={`table-row-index ${
-                      enabledColumns === 0 && "deactivated"
-                    } ${!isInExcel && "unused"}`}
-                  >
-                    {index + 1})
-                  </span>{" "}
                   <span className={!isInExcel ? "line-through" : ""}>
                     {image}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    className={`status-badge ${
+                      !isInExcel
+                        ? "not-in-excel"
+                        : enabledColumns === 0
+                        ? "inactive"
+                        : "active"
+                    }`}
+                  >
+                    {!isInExcel
+                      ? "Not in Excel"
+                      : enabledColumns === 0
+                      ? "Inactive"
+                      : `${enabledColumns} Active Columns`}
                   </span>
                 </td>
                 <td>
@@ -68,9 +135,7 @@ function ImagePositionManager() {
                     }
                     disabled={!isInExcel}
                   >
-                    {isInExcel
-                      ? `${enabledColumns} Active Columns`
-                      : "Not in Excel"}
+                    Edit Positions
                   </button>
                 </td>
               </tr>

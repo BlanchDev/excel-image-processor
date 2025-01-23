@@ -23,20 +23,39 @@ app.commandLine.appendSwitch("enable-accelerated-2d-canvas");
 
 let mainWindow = null;
 
+// Ana pencereyi yönetmek için yardımcı fonksiyon
+function handleMainWindow(window) {
+  mainWindow = window;
+  return mainWindow;
+}
+
 app.whenReady().then(() => {
-  mainWindow = createMainWindow();
+  handleMainWindow(createMainWindow());
   registerFileHandlers(ipcMain, app);
   registerStoreHandlers(ipcMain);
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.destroy();
+    });
+    mainWindow = null;
     app.quit();
   }
 });
 
+app.on("before-quit", () => {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+  });
+  mainWindow = null;
+});
+
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    mainWindow = createMainWindow();
+    handleMainWindow(createMainWindow());
   }
 });

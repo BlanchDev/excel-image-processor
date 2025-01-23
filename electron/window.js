@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export function createMainWindow() {
-  const mainWindow = new BrowserWindow({
+  let mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     title: "Excel Image Processor",
@@ -29,6 +29,25 @@ export function createMainWindow() {
   });
 
   mainWindow.maximize();
+
+  // Pencere kapatıldığında temizlik işlemleri
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
+  // Pencere kapatılmaya çalışıldığında
+  mainWindow.on("close", (e) => {
+    if (!mainWindow) {
+      return;
+    }
+
+    e.preventDefault();
+    mainWindow.webContents.send("app-closing");
+    // Temizlik için biraz bekle
+    setTimeout(() => {
+      mainWindow.destroy();
+    }, 100);
+  });
 
   const isDev = !app.isPackaged;
   if (isDev) {

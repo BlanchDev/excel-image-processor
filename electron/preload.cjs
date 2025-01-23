@@ -122,7 +122,41 @@ contextBridge.exposeInMainWorld("Electron", {
   processExcelAndImageWithPreviews: (previews) =>
     ipcRenderer.invoke("process-excel-and-image-with-previews", previews),
 
+  processExcelAndPdf: (excelData) =>
+    ipcRenderer.invoke("process-excel-and-pdf", excelData),
+
   getOutputFiles: () => ipcRenderer.invoke("get-output-files"),
   getOutputPreview: (filename) =>
     ipcRenderer.invoke("get-output-preview", filename),
+
+  /** @returns {Promise<string[]>} */
+  getPdfList: () => ipcRenderer.invoke("get-pdf-list"),
+
+  /** @returns {Promise<string>} */
+  getPdfPreview: (pdfName) => ipcRenderer.invoke("get-pdf-preview", pdfName),
+
+  /** @returns {Promise<ProcessResult>} */
+  replaceTextInPdf: ({ pdfName, replacements }) =>
+    ipcRenderer.invoke("replace-text-in-pdf", { pdfName, replacements }),
+
+  /** @returns {Promise<Object>} */
+  getPdfReplacements: () => ipcRenderer.invoke("get-pdf-replacements"),
+
+  /** @returns {Promise<Object>} */
+  getPdfFormFields: (pdfName) =>
+    ipcRenderer.invoke("get-pdf-form-fields", pdfName),
+
+  /**
+   * @param {Object} replacements
+   * @returns {Promise<boolean>}
+   */
+  savePdfReplacements: (replacements) =>
+    ipcRenderer.invoke("save-pdf-replacements", replacements),
+
+  convertPdfToPng: () => ipcRenderer.invoke("convert-pdf-to-png"),
+
+  // Conversion status listener
+  onConversionStatus: (callback) => {
+    ipcRenderer.on("conversion-status", (_, status) => callback(status));
+  },
 });

@@ -10,10 +10,16 @@ function HomePage() {
   const [processing, setProcessing] = useState(false);
   const [lastMessage, setLastMessage] = useState("");
   const [imageScale, setImageScale] = useState(1);
-  const [previews, setPreviews] = useState(new Map());
   const [outputs, setOutputs] = useState([]);
   const [loadedFonts, setLoadedFonts] = useState(new Set());
   const [selectedPreview, setSelectedPreview] = useState(null);
+  const [isLoadingOutputs, setIsLoadingOutputs] = useState(false);
+  const [outputPage, setOutputPage] = useState(1);
+  const [hasMoreOutputs, setHasMoreOutputs] = useState(true);
+  const [totalOutputs, setTotalOutputs] = useState(0);
+  const [showOutputs, setShowOutputs] = useState();
+  const [isConverting, setIsConverting] = useState(false);
+  const outputsPerPage = 22;
 
   const { status, setStatus } = useStatus();
   const { paths, currentExcel } = useFilePaths();
@@ -77,7 +83,10 @@ function HomePage() {
         ctx.textBaseline = "top";
         ctx.textAlign = "left";
 
-        ctx.drawImage(img, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        ctx.drawImage(img, 0, 0, img.width, img.height);
 
         // Her sütun için metin ekle
         for (const [column, pos] of Object.entries(positions)) {
@@ -119,19 +128,19 @@ function HomePage() {
             totalWidth += letterSpacing * (chars.length - 1);
 
             // Başlangıç X pozisyonunu alignment'a göre ayarla
-            let currentX = pos.x / useScale;
+            let currentX = pos.x;
             if (pos.alignment === "right") {
-              currentX = pos.x / useScale - totalWidth;
+              currentX = pos.x - totalWidth;
             }
 
             // Arkaplanı çiz
             ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
-            ctx.fillRect(currentX, pos.y / useScale, totalWidth, fontSize);
+            ctx.fillRect(currentX, pos.y, totalWidth, fontSize);
 
             // Metni karakter karakter çiz
             ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
             chars.forEach((char, index) => {
-              ctx.fillText(char, currentX, pos.y / useScale);
+              ctx.fillText(char, currentX, pos.y);
               currentX +=
                 charWidths[index] +
                 (index < chars.length - 1 ? letterSpacing : 0);
@@ -146,15 +155,12 @@ function HomePage() {
 
             // Arkaplanı çiz
             ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
-            const bgX =
-              ctx.textAlign === "right"
-                ? pos.x / useScale - textWidth
-                : pos.x / useScale;
-            ctx.fillRect(bgX, pos.y / useScale, textWidth, textHeight);
+            const bgX = ctx.textAlign === "right" ? pos.x - textWidth : pos.x;
+            ctx.fillRect(bgX, pos.y, textWidth, textHeight);
 
             // Metni çiz
             ctx.fillStyle = `rgba(${pos.color.r}, ${pos.color.g}, ${pos.color.b}, ${pos.color.a})`;
-            ctx.fillText(text, pos.x / useScale, pos.y / useScale);
+            ctx.fillText(text, pos.x, pos.y);
           }
         }
 
@@ -192,45 +198,124 @@ function HomePage() {
     window.Electron.getStore("imageScale").then((scale) => {
       setImageScale(scale ?? 0);
     });
+
+    // Dönüşüm durumu dinleyicisini ekle
+    window.Electron.onConversionStatus((status) => {
+      setStatus(status);
+    });
+  }, [setStatus]);
+
+  useEffect(() => {
+    // Kullanıcının tercihini localStorage'dan al
+    const savedShowOutputs = localStorage.getItem("showOutputs");
+    if (savedShowOutputs !== null) {
+      setShowOutputs(savedShowOutputs === "true");
+    }
   }, []);
 
   // Output dosyalarını yükle
-  const loadOutputs = async () => {
-    try {
-      const outputFiles = await window.Electron.getOutputFiles();
-      const outputPreviews = [];
+  const loadOutputs = useCallback(
+    async (page = 1, shouldAppend = false) => {
+      try {
+        setIsLoadingOutputs(true);
+        const outputFiles = await window.Electron.getOutputFiles();
+        setTotalOutputs(outputFiles.length);
 
-      for (const file of outputFiles) {
-        const preview = await window.Electron.getOutputPreview(file);
-        if (preview) {
-          outputPreviews.push({ name: file, preview });
+        const start = (page - 1) * outputsPerPage;
+        // Eğer başlangıç indeksi toplam dosya sayısından büyükse, daha fazla dosya yok demektir
+        if (start >= outputFiles.length) {
+          setHasMoreOutputs(false);
+          return false;
         }
+
+        const end = start + outputsPerPage;
+        const currentPageFiles = outputFiles.slice(start, end);
+
+        const outputPreviews = [];
+        for (const file of currentPageFiles) {
+          const preview = await window.Electron.getOutputPreview(file);
+          if (preview) {
+            outputPreviews.push({ name: file, preview });
+          }
+        }
+
+        // Eğer append modundaysa ve aynı dosyalar varsa ekleme
+        if (shouldAppend) {
+          setOutputs((prev) => {
+            const existingNames = new Set(prev.map((p) => p.name));
+            const newOutputs = outputPreviews.filter(
+              (p) => !existingNames.has(p.name),
+            );
+            return [...prev, ...newOutputs];
+          });
+        } else {
+          setOutputs(outputPreviews);
+        }
+
+        // Son sayfaya gelip gelmediğimizi kontrol et
+        const hasMore = end < outputFiles.length;
+        setHasMoreOutputs(hasMore);
+        return hasMore;
+      } catch (error) {
+        console.error("Error loading outputs:", error);
+        setHasMoreOutputs(false);
+        return false;
+      } finally {
+        setIsLoadingOutputs(false);
       }
+    },
+    [], // Boş dependency array - fonksiyon asla değişmeyecek
+  );
 
-      setOutputs(outputPreviews);
-    } catch (error) {
-      console.error("Error loading outputs:", error);
-    }
-  };
-
-  // Her saniye output klasörünü kontrol et
+  // İlk yükleme ve periyodik kontrol
   useEffect(() => {
-    loadOutputs(); // İlk yükleme
+    let mounted = true;
+    let intervalId;
 
-    const interval = setInterval(() => {
-      loadOutputs();
-    }, 1000);
+    const checkOutputs = async () => {
+      if (!mounted) return;
 
-    // Cleanup interval
-    return () => clearInterval(interval);
-  }, []); // Sadece component mount olduğunda çalışsın
+      const prevTotal = totalOutputs;
+      const outputFiles = await window.Electron.getOutputFiles();
 
-  // İşlem tamamlandığında output'ları yükle
-  useEffect(() => {
-    if (!processing) {
-      loadOutputs();
-    }
-  }, [processing]);
+      // Sadece toplam dosya sayısı değiştiyse yeniden yükle
+      if (outputFiles.length !== prevTotal) {
+        setHasMoreOutputs(true);
+        setOutputPage(1);
+        await loadOutputs(1, false);
+      }
+    };
+
+    // İlk yükleme
+    loadOutputs(1, false);
+
+    // Interval başlat
+    intervalId = setInterval(checkOutputs, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, [loadOutputs, totalOutputs]);
+
+  // Scroll ile daha fazla output yükleme
+  const handleOutputScroll = useCallback(
+    (e) => {
+      const element = e.target;
+      const isNearBottom =
+        element.scrollHeight - element.scrollTop <= element.clientHeight + 100;
+
+      if (isNearBottom && !isLoadingOutputs && hasMoreOutputs) {
+        const nextPage = outputPage + 1;
+        loadOutputs(nextPage, true).then((hasMore) => {
+          if (hasMore) {
+            setOutputPage(nextPage);
+          }
+        });
+      }
+    },
+    [outputPage, isLoadingOutputs, hasMoreOutputs, loadOutputs],
+  );
 
   const handleFileSelection = async () => {
     if (!window.Electron) {
@@ -251,52 +336,125 @@ function HomePage() {
     try {
       await loadData();
       setProcessing(true);
-      setStatus("Creating previews...");
+      setStatus("Processing files...");
 
       // Excel verilerini al
       const excelData = await window.Electron.getExcelData();
       const imageList = await window.Electron.getImageList();
+      const pdfList = await window.Electron.getPdfList();
       const newPreviews = new Map();
+      const pdfData = [];
 
-      // Her Excel satırı için önizleme oluştur
+      // Her Excel satırı için işlem yap
+      let processedImageCount = 0;
+      let processedPdfCount = 0;
+      let totalRows = excelData.length;
+
       for (const [index, row] of excelData.entries()) {
-        const imageName = row.img_path;
-        if (!imageName || !imageList.includes(imageName)) continue;
+        const fileName = row.img_path;
+        if (!fileName) continue;
 
-        const imageData = await window.Electron.getImagePreview(imageName);
-        if (!imageData) continue;
+        // Dosya uzantısını kontrol et
+        const fileExtension = fileName.toLowerCase().split(".").pop();
 
-        const imagePositions = positions[imageName] || {};
-        const preview = await createPreview(
-          imageName,
-          imageData,
-          imagePositions,
-          row,
-        );
-        // Benzersiz bir anahtar oluştur (satır indeksi + resim adı)
-        const previewKey = `${index + 1}-${imageName}`;
-        newPreviews.set(previewKey, preview);
-      }
+        // Görsel dosyası ise
+        if (["jpg", "jpeg", "png"].includes(fileExtension)) {
+          // Görsel listesinde var mı kontrol et
+          if (!imageList.includes(fileName)) {
+            continue;
+          }
 
-      setPreviews(newPreviews);
-      setStatus("Previews created, starting process...");
-
-      // Önizlemeleri kullanarak çıktı al
-      const result = await window.Electron.processExcelAndImageWithPreviews(
-        Array.from(newPreviews.entries()),
-      );
-
-      if (result.success) {
-        let statusMessage = `Process completed!\n\n${result.results.length} files saved to: ${result.saveDir}`;
-        if (result.errors && result.errors.length > 0) {
-          statusMessage += "\n\n\nErrors:\n" + result.errors.join("\n");
+          // Görsel işleme
+          const imageData = await window.Electron.getImagePreview(fileName);
+          if (imageData) {
+            const imagePositions = positions[fileName] || {};
+            const preview = await createPreview(
+              fileName,
+              imageData,
+              imagePositions,
+              row,
+            );
+            const previewKey = `${index + 1}-${fileName}`;
+            newPreviews.set(previewKey, preview);
+            processedImageCount++;
+          }
         }
-        setStatus(statusMessage);
-        setPreviews(new Map()); // Preview'leri temizle
-        await loadOutputs(); // Output'ları yeniden yükle
-      } else {
-        setStatus(`Error: ${result.error}`);
+        // PDF dosyası ise
+        else if (fileExtension === "pdf") {
+          // PDF listesinde var mı kontrol et
+          if (!pdfList.includes(fileName)) {
+            continue;
+          }
+
+          // PDF verilerini hazırla
+          pdfData.push({
+            pdfName: fileName,
+            rowData: row,
+            rowIndex: index + 1,
+          });
+          processedPdfCount++;
+        }
+
+        setStatus(
+          `Processing files... (${
+            index + 1
+          }/${totalRows}) - Images: ${processedImageCount}, PDFs: ${processedPdfCount}`,
+        );
       }
+
+      setStatus("Saving processed files...");
+
+      let statusMessage = "Process completed!\n\n";
+      let hasErrors = false;
+
+      // İşlenecek görsel var mı kontrol et
+      if (newPreviews.size > 0) {
+        // Process images
+        const imageResult =
+          await window.Electron.processExcelAndImageWithPreviews(
+            Array.from(newPreviews.entries()),
+          );
+
+        if (imageResult.success) {
+          statusMessage += `${processedImageCount} images processed.\n`;
+          if (imageResult.errors?.length > 0) {
+            hasErrors = true;
+            statusMessage +=
+              "\nImage Errors:\n" + imageResult.errors.join("\n");
+          }
+        } else {
+          hasErrors = true;
+          statusMessage += `\nImage Error: ${imageResult.error}\n`;
+        }
+      }
+
+      // İşlenecek PDF var mı kontrol et
+      if (pdfData.length > 0) {
+        // Process PDFs
+        const pdfResult = await window.Electron.processExcelAndPdf(pdfData);
+
+        if (pdfResult.success) {
+          statusMessage += `${processedPdfCount} PDFs processed.\n`;
+          if (pdfResult.errors?.length > 0) {
+            hasErrors = true;
+            statusMessage += "\nPDF Errors:\n" + pdfResult.errors.join("\n");
+          }
+        } else {
+          hasErrors = true;
+          statusMessage += `\nPDF Error: ${pdfResult.error}\n`;
+        }
+      }
+
+      if (!hasErrors) {
+        statusMessage += `\nFiles saved to: ${paths.outputDir}`;
+      }
+
+      setStatus(statusMessage);
+
+      // Reload outputs and show automatically
+      await loadOutputs(1, false);
+      localStorage.setItem("showOutputs", "true");
+      //setShowOutputs(true);
     } catch (error) {
       setStatus(`Error: ${error.message}`);
     } finally {
@@ -318,67 +476,110 @@ function HomePage() {
     setSelectedPreview({ name: imageName, url: preview });
   };
 
+  const handleToggleOutputs = useCallback(() => {
+    setShowOutputs((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("showOutputs", newValue);
+      return newValue;
+    });
+  }, []);
+
+  const handlePdfToPngConversion = async () => {
+    try {
+      setIsConverting(true);
+      setStatus("Starting PDF to PNG conversion...");
+
+      const result = await window.Electron.convertPdfToPng();
+
+      if (result.success) {
+        if (result.errors.length > 0) {
+          setStatus(
+            `Conversion completed with some errors:\n${result.errors.join(
+              "\n",
+            )}`,
+          );
+        }
+        // Reload outputs to show new PNG files
+        await loadOutputs(1, false);
+      } else {
+        setStatus(`Error during conversion: ${result.error}`);
+      }
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   return (
-    <div className='app-layout-page home-page column aic gap50'>
-      <div className='row aic jcsb gap10'>
-        <h3>Home Page</h3>
-      </div>
-      <div className='column aic gap20'>
-        <button
-          onClick={handleFileSelection}
-          disabled={processing || !currentExcel}
-          className='button green'
-        >
-          Start Process{" "}
-          {currentExcel ? currentExcel : "No Excel File Selected!"}
-        </button>
-        {lastMessage && (
-          <div style={{ marginTop: "20px", whiteSpace: "pre-line" }}>
-            <p>{lastMessage}</p>
-          </div>
-        )}
-      </div>
-      <div className='settings-section'>
-        <h3>Image Quality Settings</h3>
-        <div className='scale-selector'>
-          <label>Image Resolution:</label>
-          <select
-            value={imageScale}
-            onChange={(e) => handleScaleChange(Number(e.target.value))}
+    <div className='app-layout-page home-page column aic gap20'>
+      <div className='column w100 gap10'>
+        <div className='w100 row aic jcsb gap10'>
+          <h2>Home Page</h2>
+        </div>
+        <div className='row aic gap20'>
+          <button
+            onClick={handleFileSelection}
+            disabled={processing || !currentExcel}
+            className='button green'
           >
-            <option value={0}>Original Resolution</option>
-            <option value={1}>1K Resolution</option>
-            <option value={2}>2K Resolution</option>
-            <option value={3}>3K Resolution</option>
-            <option value={4}>4K Resolution</option>
-          </select>
+            Start Process{" "}
+            {currentExcel ? currentExcel : "No Excel File Selected!"}
+          </button>
+          {lastMessage && (
+            <div style={{ whiteSpace: "pre-line" }}>
+              <p>{lastMessage}</p>
+            </div>
+          )}
+        </div>
+        <div className='settings-section'>
+          <h3>Settings</h3>
+          <div className='settings-grid'>
+            <div className='scale-selector'>
+              <label>Image Resolution:</label>
+              <select
+                value={imageScale}
+                onChange={(e) => handleScaleChange(Number(e.target.value))}
+              >
+                <option value={0}>Original Resolution</option>
+                <option value={1}>1K Resolution</option>
+                <option value={2}>2K Resolution</option>
+                <option value={3}>3K Resolution</option>
+                <option value={4}>4K Resolution</option>
+              </select>
+            </div>
+
+            <div className='toggle-selector'>
+              <label>Show Outputs:</label>
+              <div
+                className={`toggle-switch ${showOutputs ? "active" : ""}`}
+                onClick={handleToggleOutputs}
+              >
+                <div className='toggle-slider' />
+              </div>
+            </div>
+
+            <button
+              className='button green maxContentW'
+              onClick={handlePdfToPngConversion}
+              disabled={isConverting}
+            >
+              {isConverting ? "Converting..." : "PDF to PNG"}
+            </button>
+          </div>
         </div>
       </div>
 
-      {previews.size > 0 && (
-        <div className='previews-section'>
-          <h3>Previews</h3>
-          <div className='previews-grid'>
-            {Array.from(previews.entries()).map(([imageName, preview]) => (
-              <div
-                key={imageName}
-                className='preview-item'
-                onClick={() => handlePreviewClick(imageName, preview)}
-              >
-                <h4>{imageName}</h4>
-                <div className='image-container'>
-                  <img src={preview} alt={imageName} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {outputs.length > 0 && (
-        <div className='previews-section'>
-          <h3>Outputs</h3>
-          <div className='previews-grid'>
+      <div className='previews-section'>
+        <h3>
+          Outputs (Showing {showOutputs ? outputs.length : 0} of {totalOutputs})
+        </h3>
+        {showOutputs && outputs.length > 0 && (
+          <div
+            className='previews-grid'
+            onScroll={handleOutputScroll}
+            style={{ maxHeight: "600px", overflowY: "auto" }}
+          >
             {outputs.map(({ name, preview }) => (
               <div
                 key={name}
@@ -387,13 +588,19 @@ function HomePage() {
               >
                 <h4>{name}</h4>
                 <div className='image-container'>
-                  <img src={preview} alt={name} />
+                  <img loading='lazy' src={preview} alt={name} />
                 </div>
               </div>
             ))}
+            {isLoadingOutputs && (
+              <div className='loading-indicator'>Loading more outputs...</div>
+            )}
+            {!isLoadingOutputs && !hasMoreOutputs && outputs.length > 0 && (
+              <div className='loading-indicator'>No more outputs to load.</div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {selectedPreview && (
         <div

@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 function ImageManagerProvider({ children }) {
   const [images, setImages] = useState([]);
   const [positions, setPositions] = useState({});
+  const [pdfReplacements, setPdfReplacements] = useState({});
   const [fonts, setFonts] = useState([]);
   const [activeColorPicker, setActiveColorPicker] = useState(null);
   const [excelColumns, setExcelColumns] = useState([]);
@@ -101,6 +102,28 @@ function ImageManagerProvider({ children }) {
     [positions, currentExcel, DEFAULT_COLUMN_POSITION],
   );
 
+  const handlePdfReplacementChange = useCallback(
+    async (pdfName, columnName, fieldName) => {
+      if (!currentExcel) return;
+
+      const newReplacements = {
+        ...pdfReplacements,
+        [currentExcel]: {
+          ...(pdfReplacements[currentExcel] || {}),
+          [pdfName]: {
+            ...(pdfReplacements[currentExcel]?.[pdfName] || {}),
+            [columnName]: fieldName,
+          },
+        },
+      };
+
+      console.log("New PDF replacements:", newReplacements);
+      setPdfReplacements(newReplacements);
+      await window.Electron.savePdfReplacements(newReplacements);
+    },
+    [pdfReplacements, currentExcel],
+  );
+
   const handleColorChange = useCallback(
     (imageName, columnName, newColor, type = "color") => {
       if (!currentExcel) return;
@@ -131,6 +154,7 @@ function ImageManagerProvider({ children }) {
     if (!window.Electron) return;
 
     const savedPositions = await window.Electron.getImagePositions();
+    const savedPdfReplacements = await window.Electron.getPdfReplacements();
     const imageList = await window.Electron.getImageList();
     const fontList = await window.Electron.getFontList();
     const columns = await window.Electron.getExcelColumns();
@@ -149,6 +173,7 @@ function ImageManagerProvider({ children }) {
     }
 
     setPositions(cleanedPositions);
+    setPdfReplacements(savedPdfReplacements || {});
     setImages(imageList);
     setFonts(fontList);
     setExcelColumns(columns);
@@ -183,11 +208,13 @@ function ImageManagerProvider({ children }) {
     () => ({
       images,
       positions: positions[currentExcel] || {},
+      pdfReplacements: pdfReplacements[currentExcel] || {},
       fonts,
       excelColumns,
       excelImagePaths,
       activeColorPicker,
       handlePositionChange,
+      handlePdfReplacementChange,
       handleColorChange,
       setActiveColorPicker,
       DEFAULT_COLUMN_POSITION,
@@ -199,11 +226,13 @@ function ImageManagerProvider({ children }) {
     [
       images,
       positions,
+      pdfReplacements,
       fonts,
       excelColumns,
       excelImagePaths,
       activeColorPicker,
       handlePositionChange,
+      handlePdfReplacementChange,
       handleColorChange,
       setActiveColorPicker,
       DEFAULT_COLUMN_POSITION,

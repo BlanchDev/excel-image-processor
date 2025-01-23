@@ -16,6 +16,9 @@ function LeftBar() {
         <NavLink to='/image-manager' className='left-bar-link'>
           Image Manager
         </NavLink>
+        <NavLink to='/pdf-manager' className='left-bar-link'>
+          PDF Manager
+        </NavLink>
         {excelFiles.length > 0 && (
           <div className='excel-dropdown'>
             <button
