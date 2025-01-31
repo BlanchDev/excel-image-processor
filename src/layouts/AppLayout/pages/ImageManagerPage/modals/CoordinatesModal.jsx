@@ -172,7 +172,12 @@ function CoordinatesModal({ onClose, image }) {
 
             // Arkaplanı çiz
             ctx.fillStyle = `rgba(${pos.backgroundColor.r}, ${pos.backgroundColor.g}, ${pos.backgroundColor.b}, ${pos.backgroundColor.a})`;
-            const bgX = ctx.textAlign === "right" ? pos.x - textWidth : pos.x;
+            const bgX =
+              pos.alignment === "right"
+                ? pos.x - textWidth
+                : pos.alignment === "center"
+                ? pos.x - textWidth / 2
+                : pos.x;
             ctx.fillRect(bgX, pos.y, textWidth, textHeight);
 
             // Metni çiz
@@ -469,6 +474,7 @@ function CoordinatesModal({ onClose, image }) {
                         disabled={isImgPathColumn || !columnPosition.isEnabled}
                       >
                         <option value='left'>Left</option>
+                        <option value='center'>Center</option>
                         <option value='right'>Right</option>
                       </select>
                     </td>
