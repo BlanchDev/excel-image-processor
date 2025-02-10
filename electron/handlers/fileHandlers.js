@@ -57,7 +57,9 @@ export const registerFileHandlers = (ipcMain, app) => {
   ipcMain.handle("select-excel", async () => {
     const { filePaths } = await dialog.showOpenDialog({
       title: "Select Excel File",
-      filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
+      filters: [
+        { name: "Excel", extensions: ["xlsx", "xls", "xlsm", "xlsmx"] },
+      ],
       properties: ["openFile"],
     });
 
@@ -243,7 +245,12 @@ export const registerFileHandlers = (ipcMain, app) => {
 
       const files = await fs.readdir(savedPaths.excelFolderPath);
       return files
-        .filter((file) => file.endsWith(".xlsx") || file.endsWith(".xls"))
+        .filter(
+          (file) =>
+            file.endsWith(".xlsx") ||
+            file.endsWith(".xls") ||
+            file.endsWith(".xlsm"),
+        )
         .map((file) => ({
           name: file,
           path: path.join(savedPaths.excelFolderPath, file),
@@ -467,9 +474,9 @@ export const registerFileHandlers = (ipcMain, app) => {
             // Dosya adını oluştur
             const outputPath = path.join(
               outputDir,
-              `${path.basename(activeExcel, ".xlsx")}-${path.basename(
-                imageName,
-              )}`,
+              `${path.basename(activeExcel).replace(/\./g, "")}-${path
+                .basename(imageName, path.extname(imageName))
+                .replace(/\./g, "")}${path.extname(imageName)}`,
             );
 
             // Kaydet
@@ -545,10 +552,7 @@ export const registerFileHandlers = (ipcMain, app) => {
       }
 
       // Excel dosya adını al
-      const excelFileName = path.basename(
-        activeExcel,
-        path.extname(activeExcel),
-      );
+      const excelFileName = path.basename(activeExcel).replace(/\./g, "");
 
       // Create output directory
       await fs.mkdir(outputDir, { recursive: true });
@@ -595,7 +599,9 @@ export const registerFileHandlers = (ipcMain, app) => {
           // Çıktı dosya adını oluştur: exceldosyaismi-satirno-pdfdosyaismi.pdf
           const outputPath = path.join(
             outputDir,
-            `${excelFileName}-${rowIndex}-${pdfName}`,
+            `${excelFileName}-${rowIndex}-${path
+              .basename(pdfName, path.extname(pdfName))
+              .replace(/\./g, "")}${path.extname(pdfName)}`,
           );
 
           // PDF'i kaydet
